@@ -1,0 +1,5 @@
+# TA13 clean fixture — the MCP/CLI bridge declares HMAC-signed context
+# headers per goclaw#91 (SignBridgeContext/VerifyBridgeContext, X-Bridge-Sig).
+bridge:
+  hmac_enabled: true
+  context_headers_signed: true

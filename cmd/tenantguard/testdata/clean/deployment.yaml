@@ -1,8 +1,11 @@
-# A fully compliant deployment, passing all 5 TA0N checks — used by
-# TestCleanTargetExitsZero.
+# A fully compliant deployment, passing all TA0N checks (including TA13) —
+# used by TestCleanTargetExitsZero.
 sandbox:
   mounts:
     - path: /shared/${TENANT_ID}/workspace
+bridge:
+  hmac_enabled: true
+  context_headers_signed: true
 tools:
   mcp:
     - url: https://api.example.com/tools
