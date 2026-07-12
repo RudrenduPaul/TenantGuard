@@ -1,7 +1,7 @@
 # Contributing to TenantGuard
 
-Thanks for considering a contribution. This project is young and the areas below are
-the highest-leverage places to help.
+Thanks for considering a contribution. This project is young, and the areas below are
+where help matters most right now.
 
 ## Adding a new rule
 
@@ -15,7 +15,7 @@ Every rule lives in `internal/policy/rego/ta0N.rego` and needs:
    PASS).
 4. A test in `internal/policy/policy_test.go` asserting both directions.
 5. If the rule should carry a HIPAA citation, add it to `hipaaCitations` in
-   `internal/compliance/hipaa.go` — and be honest about whether it's a real fit, not
+   `internal/compliance/hipaa.go`, and be honest about whether it's a real fit, not
    generic boilerplate — an unsupported compliance claim is worse than no claim at all.
 
 No rule ships without both fixtures. A rule with only a `vulnerable` fixture has an
@@ -42,7 +42,7 @@ go build ./...
 go test ./... -cover
 ```
 
-Requires Go 1.26+. No other runtime dependencies — OPA and the SARIF library are
+Requires Go 1.26+. No other runtime dependencies. OPA and the SARIF library are
 embedded as Go modules, not external tools you need to install separately.
 
 ## Before opening a PR
@@ -60,4 +60,4 @@ scanning are this repo's non-negotiable baseline, not optional extras.
 ## Code of conduct
 
 Be direct, be kind, assume good faith. Disagreements about rule accuracy or HIPAA
-citation wording are welcome and expected — get it right, not just merged.
+citation wording are welcome and expected. Get it right, not just merged.
