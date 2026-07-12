@@ -150,6 +150,27 @@ type ProviderEntry struct {
 	Location                    Location
 }
 
+// OwnerConfig captures a deployment's owner/sysadmin recovery guarantees.
+// Unlike the other sections, this is deployment-level, not a list of
+// entries: TA12 asks whether the deployment as a whole guarantees (a) a
+// valid gateway-token-authenticated `system` account is always treated as
+// emergency sysadmin, and (b) a recovery/reset command is declared. See
+// goclaw#954, a maintainer-acknowledged CRITICAL design gap describing
+// owner/sysadmin configuration with no guaranteed recovery path.
+type OwnerConfig struct {
+	OwnerIDs           []string
+	GatewayTokenEnv    string
+	HasRecoveryCommand bool
+	// Declared is true only if some scanned config file actually contained
+	// an owner: section (even an empty one). This lets TA12 distinguish
+	// "declared but empty" from "never declared at all" for citation
+	// purposes, while still treating both as FAIL-worthy — an absent owner
+	// section guarantees nothing, which is exactly the gap goclaw#954
+	// describes.
+	Declared bool
+	Location Location
+}
+
 // CollectedConfig is the single merged document every Rego policy evaluates
 // against. It is built once per scan from every recognized config file under
 // the target directory.
@@ -176,6 +197,10 @@ type CollectedConfig struct {
 	Agents                       []AgentEntry
 	ExecTools                    []ExecToolEntry
 	Providers                    []ProviderEntry
+	// Owner captures the deployment's owner/sysadmin recovery guarantees.
+	// TA12 evaluates this as a single deployment-level Finding, not one per
+	// array entry, since it describes a global invariant rather than a list.
+	Owner OwnerConfig
 	// Warnings holds one message per config file containing a field this
 	// collector doesn't recognize (e.g. a newer goclaw schema), plus any
 	// per-entry best-effort enrichment failure (e.g. an MCP tool hostname
@@ -242,6 +267,16 @@ type rawDeploymentFile struct {
 			} `yaml:"token_storage"`
 		} `yaml:"oauth"`
 	} `yaml:"providers"`
+	// Owner is a pointer so yaml.v3 leaves it nil when no owner: section is
+	// present at all, distinct from an owner: section present but empty —
+	// mergeFile uses this nil-ness to decide whether the current file should
+	// overwrite cfg.Owner, so a later file without an owner: section never
+	// silently clobbers an earlier file's already-good declaration.
+	Owner *struct {
+		OwnerIDs           []string `yaml:"owner_ids"`
+		GatewayTokenEnv    string   `yaml:"gateway_token_env"`
+		HasRecoveryCommand bool     `yaml:"has_recovery_command"`
+	} `yaml:"owner"`
 }
 
 // Collect walks target (a directory) and merges every *.yml/*.yaml file it
@@ -384,6 +419,15 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 			OAuthTokenStorageEncryption: p.OAuth.TokenStorage.Encryption,
 			Location:                    Location{File: path, Line: lines.lookup("providers", i)},
 		})
+	}
+	if raw.Owner != nil {
+		cfg.Owner = OwnerConfig{
+			OwnerIDs:           raw.Owner.OwnerIDs,
+			GatewayTokenEnv:    raw.Owner.GatewayTokenEnv,
+			HasRecoveryCommand: raw.Owner.HasRecoveryCommand,
+			Declared:           true,
+			Location:           Location{File: path, Line: lines.lookupKey("owner")},
+		}
 	}
 
 	return nil

@@ -75,4 +75,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "agent does not explicitly declare a per-agent config override (workspace restriction or sandbox config), risking silent inheritance of an undeclared global default",
 		mapsToIssue: "goclaw#145",
 	},
+	"TA12": {
+		id:          "TA12",
+		description: "deployment does not guarantee owner/sysadmin recovery access (no owner_ids declared and/or no recovery command declared)",
+		mapsToIssue: "goclaw#954",
+	},
 }

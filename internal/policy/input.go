@@ -17,6 +17,8 @@ type regoInput struct {
 	Agents                       []regoAgent    `json:"agents"`
 	ExecTools                    []regoExec     `json:"exec_tools"`
 	Providers                    []regoProvider `json:"providers"`
+	OwnerIDs                     []string       `json:"owner_ids"`
+	HasRecoveryCommand           bool           `json:"has_recovery_command"`
 }
 
 type regoSandbox struct {
@@ -107,5 +109,13 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 	for _, p := range cfg.Providers {
 		out.Providers = append(out.Providers, regoProvider{Name: p.Name, OAuthTokenStorageEncryption: p.OAuthTokenStorageEncryption})
 	}
+	// OwnerIDs is always a non-nil (possibly empty) slice here so Rego's
+	// count(input.owner_ids) sees a concrete array, never null — count()
+	// errors on null instead of treating it as zero.
+	out.OwnerIDs = cfg.Owner.OwnerIDs
+	if out.OwnerIDs == nil {
+		out.OwnerIDs = []string{}
+	}
+	out.HasRecoveryCommand = cfg.Owner.HasRecoveryCommand
 	return out
 }
