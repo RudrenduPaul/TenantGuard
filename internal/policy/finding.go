@@ -37,7 +37,7 @@ type ruleMeta struct {
 var ruleMetadata = map[string]ruleMeta{
 	"TA01": {
 		id:          "TA01",
-		description: "sandbox/workspace mount path is not scoped per-tenant",
+		description: "sandbox/workspace mount path is not scoped per-tenant (no ${TENANT_ID} placeholder and no explicit scoped_per_tenant declaration)",
 		mapsToIssue: "goclaw#1163",
 	},
 	"TA02": {
