@@ -45,6 +45,7 @@ Every finding names the exact config field at fault, the upstream issue it repro
 | TA13 | MCP/CLI bridge exposed without HMAC-signed context headers (bridge.hmac_enabled / bridge.context_headers_signed) | `goclaw#91` |
 | TA14 | Browser/container profile storage path is not scoped per-agent/per-tenant | `goclaw#778` |
 | TA06 | A cron binding doesn't declare that its store layer captures/replays the human creator's identity at fire time | `goclaw#1129` |
+| TA07 | Sandbox container privilege isn't hardened: root user by default, full host-env passthrough, tmpfs missing `noexec,nosuid,nodev`, or a dangerous Linux capability added | `goclaw#1014` |
 
 Every rule has a labeled vulnerable fixture and a labeled clean fixture in `internal/policy/testdata/`, so the detection claim above is reproducible: `go test ./internal/policy/... -v`.
 

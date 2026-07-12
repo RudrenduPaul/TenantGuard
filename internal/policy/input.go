@@ -25,8 +25,12 @@ type regoInput struct {
 }
 
 type regoSandbox struct {
-	Path            string `json:"path"`
-	ScopedPerTenant bool   `json:"scoped_per_tenant"`
+	Path            string   `json:"path"`
+	ScopedPerTenant bool     `json:"scoped_per_tenant"`
+	User            string   `json:"user"`
+	EnvMode         string   `json:"env_mode"`
+	TmpfsFlags      []string `json:"tmpfs_flags"`
+	CapAdd          []string `json:"cap_add"`
 }
 
 type regoResourceProfile struct {
@@ -82,7 +86,26 @@ type regoExec struct {
 func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 	out := regoInput{}
 	for _, s := range cfg.Sandboxes {
-		out.Sandboxes = append(out.Sandboxes, regoSandbox{Path: s.Path, ScopedPerTenant: s.ScopedPerTenant})
+		// Normalize nil slices to empty so the JSON handed to OPA always
+		// carries an array (never null) for tmpfs_flags/cap_add -- this lets
+		// ta07.rego iterate them directly without needing OPA's object.get
+		// null-handling.
+		tmpfsFlags := s.TmpfsFlags
+		if tmpfsFlags == nil {
+			tmpfsFlags = []string{}
+		}
+		capAdd := s.CapAdd
+		if capAdd == nil {
+			capAdd = []string{}
+		}
+		out.Sandboxes = append(out.Sandboxes, regoSandbox{
+			Path:            s.Path,
+			ScopedPerTenant: s.ScopedPerTenant,
+			User:            s.User,
+			EnvMode:         s.EnvMode,
+			TmpfsFlags:      tmpfsFlags,
+			CapAdd:          capAdd,
+		})
 	}
 	out.SandboxOnUnavailable = cfg.SandboxOnUnavailable
 	out.SandboxOnUnavailableDeclared = cfg.SandboxOnUnavailableDeclared

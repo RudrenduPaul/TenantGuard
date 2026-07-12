@@ -39,9 +39,19 @@ func (l Location) String() string {
 // per tenant even though Path itself doesn't carry the ${TENANT_ID}
 // convention's placeholder literal (e.g. a mount path computed by real Go
 // code will never contain that literal template token).
+// Path against a per-tenant scoping convention. TA07 checks the
+// container-privilege fields below (User, EnvMode, TmpfsFlags, CapAdd)
+// against a hardening baseline: root-as-default, host-environment
+// passthrough, tmpfs mounts missing exec-prevention flags, and excess Linux
+// capabilities all give a compromised sandboxed process an easy escape
+// path.
 type SandboxMount struct {
 	Path            string
 	ScopedPerTenant bool
+	User            string
+	EnvMode         string
+	TmpfsFlags      []string
+	CapAdd          []string
 	Location        Location
 }
 
@@ -54,6 +64,25 @@ type SandboxMount struct {
 type ResourceProfile struct {
 	Path     string
 	Location Location
+
+	// User is the container/sandbox run-as user. Empty or "root" means the
+	// sandbox defaults to running as root (goclaw#1014, goclaw#1015).
+	User string
+	// EnvMode declares how the sandbox's process environment is populated.
+	// "inherit_host" passes through the full host environment, leaking
+	// host credentials/PATH into the sandboxed process (goclaw#1014,
+	// goclaw#1015); "isolated" or "explicit_allowlist" are the hardened
+	// options.
+	EnvMode string
+	// TmpfsFlags lists the mount flags applied to the sandbox's tmpfs
+	// mounts. Must include noexec, nosuid, and nodev to stop tmpfs being
+	// used to bypass exec/setuid controls (goclaw#728).
+	TmpfsFlags []string
+	// CapAdd lists Linux capabilities added beyond the container runtime's
+	// default set. Capabilities such as SETUID, SETGID, and CHOWN allow
+	// privilege escalation out of the sandbox and should not be added
+	// (goclaw#524).
+	CapAdd []string
 }
 
 // MCPToolEntry is one entry in a deployment's tools.mcp list. TA02 checks URL
@@ -250,8 +279,12 @@ type CollectedConfig struct {
 type rawDeploymentFile struct {
 	Sandbox struct {
 		Mounts []struct {
-			Path            string `yaml:"path"`
-			ScopedPerTenant bool   `yaml:"scoped_per_tenant"`
+			Path            string   `yaml:"path"`
+			ScopedPerTenant bool     `yaml:"scoped_per_tenant"`
+			User            string   `yaml:"user"`
+			EnvMode         string   `yaml:"env_mode"`
+			TmpfsFlags      []string `yaml:"tmpfs_flags"`
+			CapAdd          []string `yaml:"cap_add"`
 		} `yaml:"mounts"`
 		// OnUnavailable is the deployment's declared fail posture for a
 		// Docker sandbox that becomes unavailable at runtime (daemon down,
@@ -401,6 +434,10 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 		cfg.Sandboxes = append(cfg.Sandboxes, SandboxMount{
 			Path:            m.Path,
 			ScopedPerTenant: m.ScopedPerTenant,
+			User:            m.User,
+			EnvMode:         m.EnvMode,
+			TmpfsFlags:      m.TmpfsFlags,
+			CapAdd:          m.CapAdd,
 			Location:        Location{File: path, Line: lines.lookup("sandbox.mounts", i)},
 		})
 	}

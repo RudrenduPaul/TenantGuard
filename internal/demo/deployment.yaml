@@ -1,14 +1,18 @@
 # Bundled demo deployment for `tenantguard scan --demo` — a synthetic config
 # combining one violation of each TA01-TA05 rule, plus TA06 (cron creator
-# identity), TA09 (sandbox.on_unavailable is never declared below), and TA10
-# (the agent below declares no per-agent overrides), so a first-time user
-# gets a real, HIPAA-cited finding within seconds, with zero setup. Reused
-# directly from the same fixture pattern built for TA0N unit tests; this is
-# not new content authored just for the demo.
-# content authored just for the demo.
+# identity), TA07 (sandbox container privilege), TA09 (sandbox.on_unavailable
+# is never declared below), and TA10 (the agent below declares no per-agent
+# overrides), so a first-time user gets a real, HIPAA-cited finding within
+# seconds, with zero setup. Reused directly from the same fixture pattern
+# built for TA0N unit tests; this is not new content authored just for the
+# demo.
 sandbox:
   mounts:
     - path: /shared/workspace # FAIL (TA01): no ${TENANT_ID} scoping
+      user: root # FAIL (TA07): sandbox runs as root by default
+      env_mode: inherit_host # FAIL (TA07): full host environment passthrough
+      tmpfs_flags: [] # FAIL (TA07): tmpfs missing noexec/nosuid/nodev
+      cap_add: [SETUID] # FAIL (TA07): dangerous capability added
   # FAIL (TA09): on_unavailable is never declared, so there is no configured
   # fail-closed posture if the sandbox becomes unavailable at runtime.
 
