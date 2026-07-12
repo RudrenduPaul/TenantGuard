@@ -1,3 +1,10 @@
+// Package policy embeds Open Policy Agent (github.com/open-policy-agent/opa/v1/rego)
+// as a library — not a subprocess, not a hosted control plane — to evaluate
+// the TA01-TA05 tenant-isolation rules against a collector.CollectedConfig.
+// Rego was chosen over a bespoke rule engine specifically because its
+// control-ID-native policy format is a direct fit for the HIPAA/SOC2
+// control-mapping story (see tenantguard-office-hours-design-2026-07-11.md,
+// Approach C), and it stays embeddable as a single static binary.
 package policy
 
 import (
@@ -16,7 +23,7 @@ var regoFS embed.FS
 
 // ruleOrder is fixed so terminal/SARIF output is always in the same order,
 // and so a policy load failure can name exactly which rule failed to prepare.
-var ruleOrder = []string{"TA01", "TA02", "TA03", "TA04", "TA05"}
+var ruleOrder = []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA11"}
 
 // preparedRule pairs a rule ID with its compiled query, built once at
 // Evaluator construction via PrepareForEval — per OPA's own documented
@@ -35,8 +42,8 @@ type Evaluator struct {
 
 // ErrPolicyLoadFailed means a rule's Rego source failed to parse or compile.
 // The scanner must refuse to run ANY rule when this happens — a scanner that
-// silently drops one broken rule while running the other four is worse than
-// one that fails all five loudly.
+// silently drops one broken rule while running the rest is worse than one
+// that fails all of them loudly.
 type ErrPolicyLoadFailed struct {
 	RuleID string
 	Err    error
@@ -48,8 +55,8 @@ func (e *ErrPolicyLoadFailed) Error() string {
 
 func (e *ErrPolicyLoadFailed) Unwrap() error { return e.Err }
 
-// NewEvaluator compiles all five TA0N policies. If any one fails to compile,
-// it returns an error and no partially-usable Evaluator — see
+// NewEvaluator compiles every TA0N policy in ruleOrder. If any one fails to
+// compile, it returns an error and no partially-usable Evaluator — see
 // ErrPolicyLoadFailed.
 func NewEvaluator(ctx context.Context) (*Evaluator, error) {
 	ev := &Evaluator{}
@@ -110,6 +117,10 @@ func (e *Evaluator) Evaluate(ctx context.Context, cfg *collector.CollectedConfig
 			})...)
 		case "TA05":
 			findings = append(findings, buildTA05Findings(cfg, results)...)
+		case "TA11":
+			findings = append(findings, buildFindings(r.id, len(cfg.ChannelInstances), violationSet, func(i int) collector.Location {
+				return cfg.ChannelInstances[i].Location
+			})...)
 		}
 	}
 	return findings, nil

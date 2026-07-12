@@ -1,0 +1,9 @@
+# TA11 clean fixture — each channel_instance has its own device_session_id, so
+# no tenant can silently inherit another tenant's paired channel session.
+channel_instances:
+  - channel: whatsapp
+    tenant: tenant-a
+    device_session_id: sess-tenant-a
+  - channel: whatsapp
+    tenant: tenant-b
+    device_session_id: sess-tenant-b
