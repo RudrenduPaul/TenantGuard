@@ -34,7 +34,7 @@ Every finding names the exact config field at fault, the upstream issue it repro
 | Rule | What it catches | Maps to |
 |---|---|---|
 | TA01 | Sandbox/workspace mount not scoped per tenant | `goclaw#1163` |
-| TA02 | MCP tool URL targets a private/loopback address with no declared SSRF validation | `goclaw#1070` |
+| TA02 | MCP tool URL targets a private/loopback/reserved address (real CIDR containment, DNS-resolved) with no verified, IP-pinned SSRF validator or host allowlist entry -- note: a PASS trusts the deployment's own declaration and cannot itself verify DNS-rebinding/TOCTOU safety at connection time | `goclaw#1070` |
 | TA03 | A scheduled job's target agent belongs to a different tenant, or doesn't exist at all | `goclaw#1217` |
 | TA04 | An exec tool denies direct env-dump reads but not indirect ones (e.g. a shell running `jq $ENV`) | `goclaw#1227` |
 | TA05 | An exec-approval "allow-always" entry is keyed on basename only, not a full path | `goclaw#1216` |
