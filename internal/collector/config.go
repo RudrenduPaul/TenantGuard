@@ -127,6 +127,15 @@ type ApprovalEntry struct {
 	Location   Location
 }
 
+// ProviderEntry is one entry in a deployment's providers list. TA08 checks
+// OAuthTokenStorageEncryption for a declared strong-encryption algorithm on
+// stored OAuth/credential tokens.
+type ProviderEntry struct {
+	Name                        string
+	OAuthTokenStorageEncryption string
+	Location                    Location
+}
+
 // CollectedConfig is the single merged document every Rego policy evaluates
 // against. It is built once per scan from every recognized config file under
 // the target directory.
@@ -137,6 +146,7 @@ type CollectedConfig struct {
 	CronSchedules    []CronBinding
 	Agents           []AgentEntry
 	ExecTools        []ExecToolEntry
+	Providers        []ProviderEntry
 	// Warnings holds one message per config file containing a field this
 	// collector doesn't recognize (e.g. a newer goclaw schema), plus any
 	// per-entry best-effort enrichment failure (e.g. an MCP tool hostname
@@ -184,6 +194,14 @@ type rawDeploymentFile struct {
 		Name   string `yaml:"name"`
 		Tenant string `yaml:"tenant"`
 	} `yaml:"agents"`
+	Providers []struct {
+		Name  string `yaml:"name"`
+		OAuth struct {
+			TokenStorage struct {
+				Encryption string `yaml:"encryption"`
+			} `yaml:"token_storage"`
+		} `yaml:"oauth"`
+	} `yaml:"providers"`
 }
 
 // Collect walks target (a directory) and merges every *.yml/*.yaml file it
@@ -303,6 +321,13 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 			Name:     a.Name,
 			Tenant:   a.Tenant,
 			Location: Location{File: path, Line: lines.lookup("agents", i)},
+		})
+	}
+	for i, p := range raw.Providers {
+		cfg.Providers = append(cfg.Providers, ProviderEntry{
+			Name:                        p.Name,
+			OAuthTokenStorageEncryption: p.OAuth.TokenStorage.Encryption,
+			Location:                    Location{File: path, Line: lines.lookup("providers", i)},
 		})
 	}
 
