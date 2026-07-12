@@ -6,11 +6,12 @@ import "github.com/RudrenduPaul/TenantGuard/internal/collector"
 // excludes collector.Location — Rego only needs to identify *which* array
 // index is a violation; Go maps that index back to a Location afterward.
 type regoInput struct {
-	Sandboxes     []regoSandbox `json:"sandboxes"`
-	MCPTools      []regoMCPTool `json:"mcp_tools"`
-	CronSchedules []regoCron    `json:"cron_schedules"`
-	Agents        []regoAgent   `json:"agents"`
-	ExecTools     []regoExec    `json:"exec_tools"`
+	Sandboxes        []regoSandbox         `json:"sandboxes"`
+	MCPTools         []regoMCPTool         `json:"mcp_tools"`
+	CronSchedules    []regoCron            `json:"cron_schedules"`
+	Agents           []regoAgent           `json:"agents"`
+	ExecTools        []regoExec            `json:"exec_tools"`
+	ChannelInstances []regoChannelInstance `json:"channel_instances"`
 }
 
 type regoSandbox struct {
@@ -46,6 +47,15 @@ type regoExec struct {
 	Approvals []regoApproval `json:"approvals"`
 }
 
+// regoChannelInstance is one declared messaging-channel instance. TA11
+// correlates DeviceSessionID across entries to catch cross-tenant identity
+// sharing (goclaw#1064/#1065).
+type regoChannelInstance struct {
+	Channel         string `json:"channel"`
+	Tenant          string `json:"tenant"`
+	DeviceSessionID string `json:"device_session_id"`
+}
+
 func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 	out := regoInput{}
 	for _, s := range cfg.Sandboxes {
@@ -68,6 +78,9 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 			re.Approvals = append(re.Approvals, regoApproval{Basename: a.Basename, PathScoped: a.PathScoped})
 		}
 		out.ExecTools = append(out.ExecTools, re)
+	}
+	for _, c := range cfg.ChannelInstances {
+		out.ChannelInstances = append(out.ChannelInstances, regoChannelInstance{Channel: c.Channel, Tenant: c.Tenant, DeviceSessionID: c.DeviceSessionID})
 	}
 	return out
 }

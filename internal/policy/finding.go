@@ -60,4 +60,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "exec-approval allow-always entry is keyed on basename only, not a full path scope",
 		mapsToIssue: "goclaw#1216",
 	},
+	"TA11": {
+		id:          "TA11",
+		description: "channel/session device identity is shared across channel_instances declaring different tenants",
+		mapsToIssue: "goclaw#1064",
+	},
 }
