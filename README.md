@@ -75,10 +75,10 @@ Sources: [Trivy docs](https://trivy.dev/docs/latest/getting-started/), [Conftest
 
 ## GitHub Action
 
-    - uses: RudrenduPaul/TenantGuard/action@main
+    - uses: RudrenduPaul/TenantGuard/action@91ed465a16f1a0a0ddb2d862ce1c0ddd035118b1 # pin to a specific commit or tag
       with:
         target: ./deployment/config
-        version: v0.1.0 # pin this in your own workflow
+        version: v0.1.0 # replace with a real tag once one is cut
 
 Runs the scan in CI and uploads the SARIF report via `github/codeql-action/upload-sarif`, so findings show up as code-scanning alerts on your PRs.
 
