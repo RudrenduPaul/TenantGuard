@@ -1,8 +1,9 @@
-# A fully compliant deployment, passing all 5 TA0N checks — used by
+# A fully compliant deployment, passing all TA0N checks — used by
 # TestCleanTargetExitsZero.
 sandbox:
   mounts:
     - path: /shared/${TENANT_ID}/workspace
+  on_unavailable: fail_closed
 tools:
   mcp:
     - url: https://api.example.com/tools
