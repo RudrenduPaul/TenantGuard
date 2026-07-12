@@ -11,7 +11,7 @@ Drift, a different AI agent platform, shut down in March 2026 after an OAuth bre
 
 goclaw, a genuinely useful self-hosted multi-tenant agent platform with more than 3,400 stars, has five open, confirmed issues that describe the same failure mode in miniature: a sandbox workspace mount that isn't scoped per tenant, a cross-agent authorization gap that lets a scheduled job reach a foreign tenant's agent, an exec tool that can leak environment secrets through an indirect path, an approval bypass keyed on a filename instead of a real path scope, and an SSRF validation mismatch on saved tool URLs. All five were still open the day this tool was written. None of them have accumulated much visible reaction yet, most were filed within the last few months, but each one is real, reproducible, and unfixed.
 
-tenantguard checks for exactly these five patterns, plus a sixth pattern reproducing a related identity-propagation bug fixed upstream in goclaw#1129, and the broader category of tenant-isolation defect they represent, in any self-hosted multi-tenant agent deployment, not just goclaw.
+tenantguard checks for exactly these five patterns, plus a sixth pattern reproducing a related identity-propagation bug proposed as a fix upstream in goclaw#1129 (open PR, not yet merged), and the broader category of tenant-isolation defect they represent, in any self-hosted multi-tenant agent deployment, not just goclaw.
 
 ## What it does
 

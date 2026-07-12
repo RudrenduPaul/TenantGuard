@@ -36,7 +36,7 @@ func TestAnnotateUnknownRuleGetsNoCitation(t *testing.T) {
 }
 
 func TestAllFiveRulesHaveACitation(t *testing.T) {
-	for _, rule := range []string{"TA01", "TA02", "TA03", "TA04", "TA05"} {
+	for _, rule := range []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA06"} {
 		findings := []policy.Finding{{RuleID: rule, Status: policy.StatusFail}}
 		compliance.Annotate(findings)
 		if findings[0].HIPAACitation == "" {
