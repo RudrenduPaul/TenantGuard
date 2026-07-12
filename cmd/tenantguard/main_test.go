@@ -54,7 +54,7 @@ func TestDemoModeExitsWithFindings(t *testing.T) {
 	var out, errOut bytes.Buffer
 	code := run([]string{"scan", "--demo"}, &out, &errOut)
 	if code != exitFindings {
-		t.Errorf("code = %d, want %d (exitFindings) — the bundled demo deployment has 5 known violations, stderr=%q", code, exitFindings, errOut.String())
+		t.Errorf("code = %d, want %d (exitFindings) — the bundled demo deployment has known violations, stderr=%q", code, exitFindings, errOut.String())
 	}
 	if !strings.Contains(out.String(), "FAIL") {
 		t.Errorf("expected FAIL findings in terminal output, got %q", out.String())

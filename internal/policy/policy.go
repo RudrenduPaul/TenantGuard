@@ -16,7 +16,7 @@ var regoFS embed.FS
 
 // ruleOrder is fixed so terminal/SARIF output is always in the same order,
 // and so a policy load failure can name exactly which rule failed to prepare.
-var ruleOrder = []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA08"}
+var ruleOrder = []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA08", "TA09"}
 
 // preparedRule pairs a rule ID with its compiled query, built once at
 // Evaluator construction via PrepareForEval — per OPA's own documented
@@ -48,9 +48,9 @@ func (e *ErrPolicyLoadFailed) Error() string {
 
 func (e *ErrPolicyLoadFailed) Unwrap() error { return e.Err }
 
-// NewEvaluator compiles all five TA0N policies. If any one fails to compile,
-// it returns an error and no partially-usable Evaluator — see
-// ErrPolicyLoadFailed.
+// NewEvaluator compiles every TA0N policy named in ruleOrder. If any one
+// fails to compile, it returns an error and no partially-usable Evaluator —
+// see ErrPolicyLoadFailed.
 func NewEvaluator(ctx context.Context) (*Evaluator, error) {
 	ev := &Evaluator{}
 	for _, id := range ruleOrder {
@@ -114,13 +114,15 @@ func (e *Evaluator) Evaluate(ctx context.Context, cfg *collector.CollectedConfig
 			findings = append(findings, buildFindings(r.id, len(cfg.Providers), violationSet, func(i int) collector.Location {
 				return cfg.Providers[i].Location
 			})...)
+		case "TA09":
+			findings = append(findings, buildTA09Findings(cfg, violationSet)...)
 		}
 	}
 	return findings, nil
 }
 
 // extractViolations reads a simple `violations contains <int>` result set
-// (used by TA01-TA04) into a Go set of indices.
+// (used by TA01-TA04 and TA09) into a Go set of indices.
 func extractViolations(results rego.ResultSet) map[int]bool {
 	set := map[int]bool{}
 	if len(results) == 0 || len(results[0].Expressions) == 0 {
@@ -222,6 +224,35 @@ func buildTA05Findings(cfg *collector.CollectedConfig, results rego.ResultSet) [
 		}
 	}
 	return out
+}
+
+// buildTA09Findings handles TA09's deployment-level scalar check. Unlike
+// TA01-TA04 (one Finding per array index) it always produces exactly one
+// Finding per scan — sandbox.on_unavailable is a single setting for the
+// whole deployment, not a list. Location falls back to SourceDeployment when
+// the key was never declared at all, since there is no line to cite for a
+// key that doesn't exist.
+func buildTA09Findings(cfg *collector.CollectedConfig, violations map[int]bool) []Finding {
+	meta := ruleMetadata["TA09"]
+
+	status := StatusPass
+	if violations[0] {
+		status = StatusFail
+	}
+
+	loc := cfg.SandboxOnUnavailableLocation
+	if !cfg.SandboxOnUnavailableDeclared {
+		loc = collector.Location{File: cfg.SourceDeployment}
+	}
+
+	return []Finding{{
+		RuleID:      "TA09",
+		Status:      status,
+		Location:    loc,
+		Description: meta.description,
+		MapsToIssue: meta.mapsToIssue,
+		Provisional: true,
+	}}
 }
 
 func lower(s string) string {

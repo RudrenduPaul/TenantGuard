@@ -21,6 +21,7 @@ var hipaaCitations = map[string]string{
 	"TA04": "HIPAA Sec164.312(a)(2)(iv) Encryption/Decryption",
 	"TA05": "HIPAA Sec164.312(a)(1) Access Control",
 	"TA08": "HIPAA Sec164.312(a)(2)(iv) Encryption/Decryption",
+	"TA09": "HIPAA Sec164.312(a)(1) Access Control",
 }
 
 // Annotate attaches a provisional HIPAA citation to every FAIL finding in

@@ -1,0 +1,6 @@
+# TA09 clean fixture — the deployment explicitly declares fail-closed
+# behavior for when the sandbox is unavailable.
+sandbox:
+  mounts:
+    - path: /shared/${TENANT_ID}/workspace
+  on_unavailable: fail_closed
