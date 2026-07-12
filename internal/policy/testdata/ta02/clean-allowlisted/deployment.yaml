@@ -1,0 +1,10 @@
+# TA02 clean fixture — a private target explicitly allowlisted for local
+# dev (tools.mcp[].allowed_private_host) passes even with no declared
+# validator at all. This is the "Option A" escape hatch requested directly
+# in the goclaw#1070 issue thread ("an explicit allowlist mechanism for MCP
+# server URLs that are intentionally local/private").
+tools:
+  mcp:
+    - url: http://127.0.0.1:9000/tools
+      validates_private: false
+      allowed_private_host: true

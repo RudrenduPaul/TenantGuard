@@ -1,0 +1,9 @@
+# TA02 vulnerable fixture — validates_private: true alone is not enough
+# anymore: without pins_resolved_ip: true, the declared validator may check
+# the hostname once at save-time but let the runtime client re-resolve at
+# connect-time, which is vulnerable to DNS rebinding / TOCTOU (raised
+# independently by @m13v and @linkdao on goclaw#1070).
+tools:
+  mcp:
+    - url: http://127.0.0.1:9000/tools
+      validates_private: true

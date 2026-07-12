@@ -2,6 +2,7 @@ package collector_test
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -85,5 +86,93 @@ func TestLocationTracksRealLine(t *testing.T) {
 	// a Finding must be able to cite this exact line, not just the file.
 	if got := cfg.Sandboxes[0].Location.Line; got != 3 {
 		t.Errorf("Location.Line = %d, want 3 (the actual line of the mount entry in the fixture)", got)
+	}
+}
+
+// TestMCPToolResolvesLiteralIP confirms that an MCP tool URL with a literal
+// IP host is captured in ResolvedIPs at collection time (Go's resolver
+// short-circuits literal IPs with no network call, so this is fast and
+// deterministic without any LookupHost override).
+func TestMCPToolResolvesLiteralIP(t *testing.T) {
+	cfg, err := collector.Collect("../policy/testdata/ta02/clean")
+	if err != nil {
+		t.Fatalf("collector.Collect: %v", err)
+	}
+	var found bool
+	for _, m := range cfg.MCPTools {
+		if m.URL == "http://127.0.0.1:9000/tools" {
+			found = true
+			if len(m.ResolvedIPs) != 1 || m.ResolvedIPs[0] != "127.0.0.1" {
+				t.Errorf("expected ResolvedIPs = [127.0.0.1] for a literal-IP URL, got %v", m.ResolvedIPs)
+			}
+			if !m.ValidatesPrivate || !m.PinsResolvedIP {
+				t.Errorf("expected ValidatesPrivate and PinsResolvedIP both true from the fixture YAML, got validates_private=%v pins_resolved_ip=%v", m.ValidatesPrivate, m.PinsResolvedIP)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected to find the 127.0.0.1 MCP tool entry from testdata/ta02/clean")
+	}
+}
+
+// TestAllowedPrivateHostFieldParses confirms tools.mcp[].allowed_private_host
+// in YAML flows through to MCPToolEntry.ExplicitlyAllowedHost.
+func TestAllowedPrivateHostFieldParses(t *testing.T) {
+	cfg, err := collector.Collect("../policy/testdata/ta02/clean-allowlisted")
+	if err != nil {
+		t.Fatalf("collector.Collect: %v", err)
+	}
+	if len(cfg.MCPTools) != 1 {
+		t.Fatalf("expected 1 MCP tool, got %d", len(cfg.MCPTools))
+	}
+	if !cfg.MCPTools[0].ExplicitlyAllowedHost {
+		t.Error("expected allowed_private_host: true in YAML to set ExplicitlyAllowedHost")
+	}
+}
+
+// TestCollectFromGoclawEnv is a best-effort, additive enrichment step (goclaw
+// PR #1248): it must flip ExplicitlyAllowedHost on any MCP tool whose
+// hostname matches (case-insensitively) an entry in the real
+// GOCLAW_MCP_ALLOWED_HOSTS env var, and must leave Collect()'s own YAML-only
+// behavior completely unaffected when the env var is unset.
+func TestCollectFromGoclawEnv(t *testing.T) {
+	orig := collector.LookupHost
+	collector.LookupHost = func(host string) ([]string, error) {
+		return nil, fmt.Errorf("dns disabled in test")
+	}
+	t.Cleanup(func() { collector.LookupHost = orig })
+
+	cfg, err := collector.Collect("testdata/mcpenv")
+	if err != nil {
+		t.Fatalf("collector.Collect: %v", err)
+	}
+	if len(cfg.MCPTools) != 2 {
+		t.Fatalf("expected 2 MCP tools collected, got %d", len(cfg.MCPTools))
+	}
+	for _, m := range cfg.MCPTools {
+		if m.ExplicitlyAllowedHost {
+			t.Fatalf("ExplicitlyAllowedHost should be false before CollectFromGoclawEnv runs, got true for %s", m.URL)
+		}
+	}
+
+	t.Setenv("GOCLAW_MCP_ALLOWED_HOSTS", "Mcp.Internal.Example.Com, other.example.com")
+	if err := collector.CollectFromGoclawEnv(cfg); err != nil {
+		t.Fatalf("CollectFromGoclawEnv: %v", err)
+	}
+
+	var matched, unmatched bool
+	for _, m := range cfg.MCPTools {
+		switch m.URL {
+		case "https://mcp.internal.example.com/tools":
+			matched = m.ExplicitlyAllowedHost
+		case "https://unrelated.example.com/tools":
+			unmatched = m.ExplicitlyAllowedHost
+		}
+	}
+	if !matched {
+		t.Error("expected the tool whose hostname appears (case-insensitively) in GOCLAW_MCP_ALLOWED_HOSTS to have ExplicitlyAllowedHost = true")
+	}
+	if unmatched {
+		t.Error("expected the tool whose hostname does NOT appear in GOCLAW_MCP_ALLOWED_HOSTS to stay ExplicitlyAllowedHost = false")
 	}
 }
