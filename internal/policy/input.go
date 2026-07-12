@@ -11,6 +11,8 @@ type regoInput struct {
 	CronSchedules []regoCron    `json:"cron_schedules"`
 	Agents        []regoAgent   `json:"agents"`
 	ExecTools     []regoExec    `json:"exec_tools"`
+	HMACEnabled          bool          `json:"bridge_hmac_enabled"`
+	ContextHeadersSigned bool          `json:"bridge_context_headers_signed"`
 }
 
 type regoSandbox struct {
@@ -69,5 +71,7 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 		}
 		out.ExecTools = append(out.ExecTools, re)
 	}
+	out.HMACEnabled = cfg.Bridge.HMACEnabled
+	out.ContextHeadersSigned = cfg.Bridge.ContextHeadersSigned
 	return out
 }

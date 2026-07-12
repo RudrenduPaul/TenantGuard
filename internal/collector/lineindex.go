@@ -48,6 +48,25 @@ func (li lineIndexer) lookup(path string, itemIndex int) int {
 	return node.Content[itemIndex].Line
 }
 
+// declaredLine resolves a dotted path of mapping keys only (no sequence
+// indices) and reports whether that key was actually present in this file,
+// plus its source line if so. This is what lets a deployment-level section
+// like bridge: be distinguished from "this file simply didn't mention it" —
+// a distinction lookup (built for list entries) doesn't need to make.
+func (li lineIndexer) declaredLine(path string) (int, bool) {
+	if li.root == nil || len(li.root.Content) == 0 {
+		return 0, false
+	}
+	node := li.root.Content[0]
+	for _, part := range strings.Split(path, ".") {
+		node = mapValue(node, part)
+		if node == nil {
+			return 0, false
+		}
+	}
+	return node.Line, true
+}
+
 // mapValue returns the value node for key in a yaml mapping node, or nil if
 // node isn't a mapping or the key isn't present.
 func mapValue(node *yaml.Node, key string) *yaml.Node {
