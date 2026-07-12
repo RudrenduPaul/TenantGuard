@@ -1,8 +1,9 @@
 # Bundled demo deployment for `tenantguard scan --demo` — a synthetic config
-# combining one violation of each TA01-TA05 rule, so a first-time user gets a
-# real, HIPAA-cited finding within seconds, with zero setup. Reused directly
-# from the same fixture pattern built for TA0N unit tests; this is not new
-# content authored just for the demo.
+# combining one violation of each TA01-TA05 rule plus a TA11 cross-tenant
+# channel-session collision, so a first-time user gets a real, HIPAA-cited
+# finding within seconds, with zero setup. Reused directly from the same
+# fixture pattern built for TA0N unit tests; this is not new content authored
+# just for the demo.
 sandbox:
   mounts:
     - path: /shared/workspace # FAIL (TA01): no ${TENANT_ID} scoping
@@ -28,3 +29,11 @@ schedules:
 agents:
   - name: research-agent-tenant-b
     tenant: tenant-b
+
+channel_instances: # FAIL (TA11): both entries share one device_session_id across tenants
+  - channel: whatsapp
+    tenant: tenant-a
+    device_session_id: sess-demo-shared
+  - channel: whatsapp
+    tenant: tenant-b
+    device_session_id: sess-demo-shared
