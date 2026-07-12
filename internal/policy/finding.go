@@ -61,4 +61,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "exec-approval allow-always entry is keyed on basename only, not a full path scope",
 		mapsToIssue: "goclaw#1216",
 	},
+	"TA08": {
+		id:          "TA08",
+		description: "provider's OAuth/credential token storage does not declare a recognized strong encryption-at-rest algorithm",
+		mapsToIssue: "goclaw#65",
+	},
 }
