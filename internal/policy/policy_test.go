@@ -55,6 +55,18 @@ func TestTA01(t *testing.T) {
 	}
 }
 
+// TestTA01_ScopedPerTenantDeclaration proves the second signal path: a mount
+// path with no ${TENANT_ID} placeholder still PASSES when scoped_per_tenant
+// is explicitly declared true, closing the gap where a real Go-computed
+// mount path can never contain the literal convention token but the
+// deployment can still attest the mount is actually scoped per tenant.
+func TestTA01_ScopedPerTenantDeclaration(t *testing.T) {
+	clean := scanFixture(t, "testdata/ta01/clean-scoped-declared", "TA01")
+	if countStatus(clean, policy.StatusFail) != 0 {
+		t.Errorf("expected zero TA01 FAILs when scoped_per_tenant is declared true, got %+v", clean)
+	}
+}
+
 func TestTA02(t *testing.T) {
 	vuln := scanFixture(t, "testdata/ta02/vulnerable", "TA02")
 	if countStatus(vuln, policy.StatusFail) == 0 {

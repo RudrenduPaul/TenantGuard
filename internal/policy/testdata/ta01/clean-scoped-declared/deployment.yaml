@@ -1,0 +1,8 @@
+# TA01 clean fixture — the workspace mount path has no ${TENANT_ID}
+# placeholder (as a real Go-computed mount path never would), but the
+# deployment explicitly declares scoped_per_tenant: true as the second,
+# independent signal that the mount is actually scoped per tenant.
+sandbox:
+  mounts:
+    - path: /var/goclaw/workspaces/acme-corp
+      scoped_per_tenant: true
