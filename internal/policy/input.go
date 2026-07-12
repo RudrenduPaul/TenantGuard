@@ -6,14 +6,19 @@ import "github.com/RudrenduPaul/TenantGuard/internal/collector"
 // excludes collector.Location — Rego only needs to identify *which* array
 // index is a violation; Go maps that index back to a Location afterward.
 type regoInput struct {
-	Sandboxes     []regoSandbox `json:"sandboxes"`
-	MCPTools      []regoMCPTool `json:"mcp_tools"`
-	CronSchedules []regoCron    `json:"cron_schedules"`
-	Agents        []regoAgent   `json:"agents"`
-	ExecTools     []regoExec    `json:"exec_tools"`
+	Sandboxes        []regoSandbox         `json:"sandboxes"`
+	MCPTools         []regoMCPTool         `json:"mcp_tools"`
+	CronSchedules    []regoCron            `json:"cron_schedules"`
+	Agents           []regoAgent           `json:"agents"`
+	ExecTools        []regoExec            `json:"exec_tools"`
+	ResourceProfiles []regoResourceProfile `json:"resource_profiles"`
 }
 
 type regoSandbox struct {
+	Path string `json:"path"`
+}
+
+type regoResourceProfile struct {
 	Path string `json:"path"`
 }
 
@@ -50,6 +55,9 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 	out := regoInput{}
 	for _, s := range cfg.Sandboxes {
 		out.Sandboxes = append(out.Sandboxes, regoSandbox{Path: s.Path})
+	}
+	for _, r := range cfg.ResourceProfiles {
+		out.ResourceProfiles = append(out.ResourceProfiles, regoResourceProfile{Path: r.Path})
 	}
 	for _, m := range cfg.MCPTools {
 		out.MCPTools = append(out.MCPTools, regoMCPTool{URL: m.URL, ValidatesPrivate: m.ValidatesPrivate})

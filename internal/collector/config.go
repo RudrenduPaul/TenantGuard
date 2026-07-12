@@ -35,6 +35,17 @@ type SandboxMount struct {
 	Location Location
 }
 
+// ResourceProfile is one entry in a deployment's resources.browser.profiles
+// list. TA14 checks Path against the same per-tenant scoping convention TA01
+// applies to sandbox mounts, but for browser/container profile storage
+// paths — a resource category goclaw's own tenant-isolation defects (PR
+// nextlevelbuilder/goclaw#778, "cross-agent browser profile isolation fix")
+// show is a genuine gap when left unscoped.
+type ResourceProfile struct {
+	Path     string
+	Location Location
+}
+
 // MCPToolEntry is one entry in a deployment's tools.mcp list. TA02 checks URL
 // for SSRF-risk targets that bypass declared validation.
 type MCPToolEntry struct {
@@ -94,6 +105,7 @@ type CollectedConfig struct {
 	CronSchedules    []CronBinding
 	Agents           []AgentEntry
 	ExecTools        []ExecToolEntry
+	ResourceProfiles []ResourceProfile
 	// Warnings holds one message per config file containing a field this
 	// collector doesn't recognize (e.g. a newer goclaw schema). These are
 	// schema-level checks, not version-gated — the scan proceeds rather than
@@ -109,6 +121,13 @@ type rawDeploymentFile struct {
 			Path string `yaml:"path"`
 		} `yaml:"mounts"`
 	} `yaml:"sandbox"`
+	Resources struct {
+		Browser struct {
+			Profiles []struct {
+				Path string `yaml:"path"`
+			} `yaml:"profiles"`
+		} `yaml:"browser"`
+	} `yaml:"resources"`
 	Tools struct {
 		MCP []struct {
 			URL              string `yaml:"url"`
@@ -212,6 +231,12 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 		cfg.Sandboxes = append(cfg.Sandboxes, SandboxMount{
 			Path:     m.Path,
 			Location: Location{File: path, Line: lines.lookup("sandbox.mounts", i)},
+		})
+	}
+	for i, p := range raw.Resources.Browser.Profiles {
+		cfg.ResourceProfiles = append(cfg.ResourceProfiles, ResourceProfile{
+			Path:     p.Path,
+			Location: Location{File: path, Line: lines.lookup("resources.browser.profiles", i)},
 		})
 	}
 	for i, m := range raw.Tools.MCP {
