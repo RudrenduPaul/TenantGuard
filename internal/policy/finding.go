@@ -1,6 +1,6 @@
 // Package policy embeds Open Policy Agent (github.com/open-policy-agent/opa/v1/rego)
 // as a library — not a subprocess, not a hosted control plane — to evaluate
-// the TA01-TA05 tenant-isolation rules against a collector.CollectedConfig.
+// the TA01-TA05 and TA13 tenant-isolation rules against a collector.CollectedConfig.
 // Rego was chosen over a bespoke rule engine specifically because its
 // control-ID-native policy format is a direct fit for the HIPAA/SOC2
 // control-mapping story, and it stays embeddable as a single static binary.
@@ -79,5 +79,10 @@ var ruleMetadata = map[string]ruleMeta{
 		id:          "TA12",
 		description: "deployment does not guarantee owner/sysadmin recovery access (no owner_ids declared and/or no recovery command declared)",
 		mapsToIssue: "goclaw#954",
+	},
+	"TA13": {
+		id:          "TA13",
+		description: "MCP/CLI bridge does not declare HMAC-signed context headers (bridge.hmac_enabled and bridge.context_headers_signed)",
+		mapsToIssue: "goclaw#91",
 	},
 }

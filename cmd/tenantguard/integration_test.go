@@ -64,7 +64,7 @@ func TestEndToEndBinary(t *testing.T) {
 		t.Fatalf("expected 1 SARIF run, got %d", len(runs))
 	}
 	results, _ := runs[0].(map[string]interface{})["results"].([]interface{})
-	if len(results) != 7 {
-		t.Errorf("expected 7 SARIF results (one per violated rule: TA01-05, TA09, TA10 -- TA08 declares no providers in the demo fixture so contributes none), got %d", len(results))
+	if len(results) != 8 {
+		t.Errorf("expected 8 SARIF results (one per violated rule: TA01-05, TA09, TA10, TA13 -- TA08/TA12 declare no providers/owner in the demo fixture or PASS cleanly so contribute none/none-FAIL), got %d", len(results))
 	}
 }

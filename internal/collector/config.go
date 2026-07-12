@@ -171,6 +171,20 @@ type OwnerConfig struct {
 	Location Location
 }
 
+// BridgeConfig is the deployment-level MCP/CLI bridge section. Unlike the
+// other sections above, it is a single, deployment-scoped declaration, not a
+// list of entries — TA13 checks it as one thing per scan, not once per
+// index. Declared is false when no config file in the target declared a
+// bridge: section at all, which TA13 treats identically to an explicit
+// false (see collector.Collect's doc comment: fail loudly, never scan clean
+// by default).
+type BridgeConfig struct {
+	Declared             bool
+	HMACEnabled          bool
+	ContextHeadersSigned bool
+	Location             Location
+}
+
 // CollectedConfig is the single merged document every Rego policy evaluates
 // against. It is built once per scan from every recognized config file under
 // the target directory.
@@ -200,7 +214,8 @@ type CollectedConfig struct {
 	// Owner captures the deployment's owner/sysadmin recovery guarantees.
 	// TA12 evaluates this as a single deployment-level Finding, not one per
 	// array entry, since it describes a global invariant rather than a list.
-	Owner OwnerConfig
+	Owner  OwnerConfig
+	Bridge BridgeConfig
 	// Warnings holds one message per config file containing a field this
 	// collector doesn't recognize (e.g. a newer goclaw schema), plus any
 	// per-entry best-effort enrichment failure (e.g. an MCP tool hostname
@@ -277,6 +292,10 @@ type rawDeploymentFile struct {
 		GatewayTokenEnv    string   `yaml:"gateway_token_env"`
 		HasRecoveryCommand bool     `yaml:"has_recovery_command"`
 	} `yaml:"owner"`
+	Bridge struct {
+		HMACEnabled          bool `yaml:"hmac_enabled"`
+		ContextHeadersSigned bool `yaml:"context_headers_signed"`
+	} `yaml:"bridge"`
 }
 
 // Collect walks target (a directory) and merges every *.yml/*.yaml file it
@@ -427,6 +446,19 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 			HasRecoveryCommand: raw.Owner.HasRecoveryCommand,
 			Declared:           true,
 			Location:           Location{File: path, Line: lines.lookupKey("owner")},
+		}
+	}
+
+	// Bridge is deployment-level, not a list — only overwrite cfg.Bridge if
+	// this file actually declares a bridge: section. A later file with no
+	// bridge: key at all must never silently clobber an earlier file's real
+	// declaration with the zero value.
+	if line, ok := lines.declaredLine("bridge"); ok {
+		cfg.Bridge = BridgeConfig{
+			Declared:             true,
+			HMACEnabled:          raw.Bridge.HMACEnabled,
+			ContextHeadersSigned: raw.Bridge.ContextHeadersSigned,
+			Location:             Location{File: path, Line: line},
 		}
 	}
 

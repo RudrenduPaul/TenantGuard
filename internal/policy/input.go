@@ -19,6 +19,8 @@ type regoInput struct {
 	Providers                    []regoProvider `json:"providers"`
 	OwnerIDs                     []string       `json:"owner_ids"`
 	HasRecoveryCommand           bool           `json:"has_recovery_command"`
+	HMACEnabled                  bool           `json:"bridge_hmac_enabled"`
+	ContextHeadersSigned         bool           `json:"bridge_context_headers_signed"`
 }
 
 type regoSandbox struct {
@@ -117,5 +119,7 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 		out.OwnerIDs = []string{}
 	}
 	out.HasRecoveryCommand = cfg.Owner.HasRecoveryCommand
+	out.HMACEnabled = cfg.Bridge.HMACEnabled
+	out.ContextHeadersSigned = cfg.Bridge.ContextHeadersSigned
 	return out
 }
