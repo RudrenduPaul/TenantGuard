@@ -3,8 +3,8 @@
 # trace to the same missing-capability class in the sandbox schema:
 #   - goclaw#1014 / goclaw#1015: Docker defaulted to running as root, and
 #     bwrap inherited the full host environment (credential/PATH leak).
-#   - goclaw#728 / goclaw#524: tmpfs mounts missing noexec/nosuid/nodev, and
-#     cap_add including unneeded SETUID/SETGID/CHOWN (privilege escalation).
+#   - goclaw#524: tmpfs mounts missing noexec/nosuid/nodev, and cap_add
+#     including unneeded SETUID/SETGID/CHOWN (privilege escalation).
 # A sandbox mount fails TA07 if it runs as root by default, passes through
 # the full host environment, mounts tmpfs without the safe flag set, or adds
 # a dangerous Linux capability.
@@ -34,7 +34,7 @@ violations contains i if {
 	mount.env_mode == "inherit_host"
 }
 
-# Reason 3: tmpfs mount is missing noexec, nosuid, or nodev (goclaw#728).
+# Reason 3: tmpfs mount is missing noexec, nosuid, or nodev (goclaw#524).
 violations contains i if {
 	some i
 	mount := input.sandboxes[i]
