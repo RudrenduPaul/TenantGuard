@@ -31,7 +31,7 @@ Every finding names the exact config field at fault, the upstream issue it repro
 
 `--demo` runs the same five checks against a bundled synthetic deployment (reusing the exact fixtures the test suite is built on) so you can see a real finding, with a real file:line and a real HIPAA citation, without needing your own goclaw deployment on hand first.
 
-## The five checks
+## The six checks
 
 | Rule | What it catches | Maps to |
 |---|---|---|
@@ -40,6 +40,7 @@ Every finding names the exact config field at fault, the upstream issue it repro
 | TA03 | A scheduled job's target agent belongs to a different tenant, or doesn't exist at all | `goclaw#1217` |
 | TA04 | An exec tool denies direct env-dump reads but not indirect ones (e.g. a shell running `jq $ENV`) | `goclaw#1227` |
 | TA05 | An exec-approval "allow-always" entry is keyed on basename only, not a full path | `goclaw#1216` |
+| TA07 | Sandbox container privilege isn't hardened: root user by default, full host-env passthrough, tmpfs missing `noexec,nosuid,nodev`, or a dangerous Linux capability added | `goclaw#1014` |
 
 Every rule has a labeled vulnerable fixture and a labeled clean fixture in `internal/policy/testdata/`, so the detection claim above is reproducible: `go test ./internal/policy/... -v`.
 
@@ -53,7 +54,7 @@ tenantguard's whole reason to exist is the narrow overlap those tools don't cove
 
 | | tenantguard | Trivy | Conftest | Checkov |
 |---|---|---|---|---|
-| Built-in tenant-isolation rules for AI-agent platforms | 5 | 0 | 0 | 0 |
+| Built-in tenant-isolation rules for AI-agent platforms | 6 | 0 | 0 | 0 |
 | HIPAA-mapped findings, this problem | Yes (provisional) | No | No | No |
 | HIPAA-mapped findings, cloud IaC | No | No | No | Yes |
 | Distribution | single static binary | single static binary | single static binary | Python package |
@@ -69,7 +70,7 @@ Sources: [Trivy docs](https://trivy.dev/docs/latest/getting-started/), [Conftest
 - **Binary:** ~31MB, statically linked, no runtime dependency beyond standard OS
   system libraries (verified with `otool -L` / `ldd`). OPA and the SARIF library are
   embedded as Go modules, not separate tools you install.
-- **Rule coverage:** every one of the 5 rules has both a true-positive and a
+- **Rule coverage:** every one of the 6 rules has both a true-positive and a
   true-negative test against a real fixture (`go test ./internal/policy/... -v`).
   Reproduce it yourself, don't take our word for it.
 
