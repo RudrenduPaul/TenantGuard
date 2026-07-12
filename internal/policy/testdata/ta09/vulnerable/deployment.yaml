@@ -1,0 +1,7 @@
+# TA09 vulnerable fixture — reproduces goclaw#246: sandbox.on_unavailable is
+# never declared, so a Docker-unavailable event at runtime has no configured
+# fail-closed behavior and could silently fall back to unsandboxed host
+# execution.
+sandbox:
+  mounts:
+    - path: /shared/${TENANT_ID}/workspace

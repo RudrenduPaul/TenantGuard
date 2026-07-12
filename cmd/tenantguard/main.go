@@ -1,7 +1,8 @@
 // Command tenantguard scans a self-hosted multi-tenant AI-agent deployment's
-// configuration for confirmed tenant-isolation defects (TA01-TA05), each
-// mapped to a still-open goclaw GitHub issue, and reports findings with an
-// optional (provisional, unverified) HIPAA Sec164.312 citation.
+// configuration for confirmed tenant-isolation defects (TA01-TA05, TA09),
+// each mapped to a goclaw GitHub issue or pull request that reproduces the
+// same failure mode, and reports findings with an optional (provisional,
+// unverified) HIPAA Sec164.312 citation.
 package main
 
 import (

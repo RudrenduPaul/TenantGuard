@@ -90,10 +90,25 @@ type ApprovalEntry struct {
 type CollectedConfig struct {
 	SourceDeployment string
 	Sandboxes        []SandboxMount
-	MCPTools         []MCPToolEntry
-	CronSchedules    []CronBinding
-	Agents           []AgentEntry
-	ExecTools        []ExecToolEntry
+	// SandboxOnUnavailable is the deployment-level (not per-entry) declared
+	// posture for sandbox.on_unavailable, e.g. "fail_closed". TA09 checks
+	// this directly rather than through the per-index list pattern the other
+	// rules use, since it is a single scalar setting for the whole
+	// deployment, not one entry per array index.
+	SandboxOnUnavailable string
+	// SandboxOnUnavailableDeclared is false if no config file under the
+	// target ever declared sandbox.on_unavailable at all. TA09 treats an
+	// undeclared value as a real gap (FAIL), never a silent PASS — matching
+	// this collector's own fail-loudly philosophy documented below.
+	SandboxOnUnavailableDeclared bool
+	// SandboxOnUnavailableLocation is only meaningful when
+	// SandboxOnUnavailableDeclared is true; there is no line to cite for a
+	// key that was never written.
+	SandboxOnUnavailableLocation Location
+	MCPTools                     []MCPToolEntry
+	CronSchedules                []CronBinding
+	Agents                       []AgentEntry
+	ExecTools                    []ExecToolEntry
 	// Warnings holds one message per config file containing a field this
 	// collector doesn't recognize (e.g. a newer goclaw schema). These are
 	// schema-level checks, not version-gated — the scan proceeds rather than
@@ -108,6 +123,13 @@ type rawDeploymentFile struct {
 		Mounts []struct {
 			Path string `yaml:"path"`
 		} `yaml:"mounts"`
+		// OnUnavailable is the deployment's declared fail posture for a
+		// Docker sandbox that becomes unavailable at runtime (daemon down,
+		// binary missing). Reproduces goclaw#246, which hardened the
+		// runtime to fail closed instead of silently falling back to
+		// unsandboxed host execution; TA09 checks that a deployment has
+		// actually declared that posture.
+		OnUnavailable string `yaml:"on_unavailable"`
 	} `yaml:"sandbox"`
 	Tools struct {
 		MCP []struct {
@@ -213,6 +235,16 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 			Path:     m.Path,
 			Location: Location{File: path, Line: lines.lookup("sandbox.mounts", i)},
 		})
+	}
+	// sandbox.on_unavailable is a deployment-level scalar, not a list, so it
+	// is threaded through separately from the per-index Sandboxes above. If
+	// a deployment splits its config across multiple files and more than one
+	// declares this key, the last file merged wins — the same "last write
+	// wins" behavior implicit in every other singleton value in this struct.
+	if line, found := lines.lookupScalar("sandbox.on_unavailable"); found {
+		cfg.SandboxOnUnavailable = raw.Sandbox.OnUnavailable
+		cfg.SandboxOnUnavailableDeclared = true
+		cfg.SandboxOnUnavailableLocation = Location{File: path, Line: line}
 	}
 	for i, m := range raw.Tools.MCP {
 		cfg.MCPTools = append(cfg.MCPTools, MCPToolEntry{

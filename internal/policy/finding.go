@@ -61,4 +61,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "exec-approval allow-always entry is keyed on basename only, not a full path scope",
 		mapsToIssue: "goclaw#1216",
 	},
+	"TA09": {
+		id:          "TA09",
+		description: "sandbox fail-closed posture not declared (sandbox.on_unavailable must be \"fail_closed\")",
+		mapsToIssue: "goclaw#246",
+	},
 }
