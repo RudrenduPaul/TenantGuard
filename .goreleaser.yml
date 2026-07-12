@@ -49,17 +49,18 @@ signs:
       - "${artifact}"
     artifacts: checksum
 
-brews:
-  - name: tenantguard
-    repository:
-      owner: RudrenduPaul
-      name: homebrew-tap
-    directory: Formula
-    homepage: "https://github.com/RudrenduPaul/TenantGuard"
-    description: "Tenant-isolation security-audit CLI for self-hosted multi-tenant AI-agent platforms"
-    license: "Apache-2.0"
-    test: |
-      system "#{bin}/tenantguard scan --demo || true"
+# disabled until RudrenduPaul/homebrew-tap exists with a HOMEBREW_TAP_TOKEN secret configured
+# brews:
+#   - name: tenantguard
+#     repository:
+#       owner: RudrenduPaul
+#       name: homebrew-tap
+#     directory: Formula
+#     homepage: "https://github.com/RudrenduPaul/TenantGuard"
+#     description: "Tenant-isolation security-audit CLI for self-hosted multi-tenant AI-agent platforms"
+#     license: "Apache-2.0"
+#     test: |
+#       system "#{bin}/tenantguard scan --demo || true"
 
 changelog:
   sort: asc
