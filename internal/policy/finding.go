@@ -96,4 +96,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "cron binding does not declare that its store layer captures/replays the human creator's sender identity at fire time",
 		mapsToIssue: "goclaw#1129",
 	},
+	"TA07": {
+		id:          "TA07",
+		description: "sandbox container privilege is not hardened (root user by default, full host-env passthrough, tmpfs missing noexec/nosuid/nodev, or a dangerous Linux capability added)",
+		mapsToIssue: "goclaw#1014",
+	},
 }
