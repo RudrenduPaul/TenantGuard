@@ -25,12 +25,11 @@ inputs:
     default: "true"
   version:
     description: >-
-      tenantguard version to install (a git tag, e.g. "v0.1.0"). Defaults to
-      "latest", which tracks whatever this repo's newest tag is at the time
-      your workflow runs — pin this to a specific tag in your own workflow
-      for reproducible builds, the same way you'd pin any other Action.
-    required: false
-    default: "latest"
+      tenantguard version to install (a git tag or commit SHA, e.g.
+      "v0.1.0"). Required — always pin explicitly for reproducible, secure
+      builds; there is no safe default because this repo has no tagged
+      releases yet.
+    required: true
 
 runs:
   using: "composite"
