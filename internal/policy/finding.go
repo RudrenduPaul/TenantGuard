@@ -53,7 +53,7 @@ var ruleMetadata = map[string]ruleMeta{
 	},
 	"TA04": {
 		id:          "TA04",
-		description: "exec tool denies direct env dump but not indirect env reads (e.g. jq $ENV), or allows credential-chain leakage via allow_chain_exec",
+		description: "exec tool denies direct env dump but not indirect env reads (e.g. jq $ENV), or allows credential-chain leakage via allow_chain_exec (goclaw#1033)",
 		mapsToIssue: "goclaw#1227",
 	},
 	"TA05": {
