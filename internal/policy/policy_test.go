@@ -99,17 +99,28 @@ func TestTA05(t *testing.T) {
 	}
 }
 
+func TestTA06(t *testing.T) {
+	vuln := scanFixture(t, "testdata/ta06/vulnerable", "TA06")
+	if countStatus(vuln, policy.StatusFail) == 0 {
+		t.Errorf("expected at least one TA06 FAIL on the vulnerable fixture, got %+v", vuln)
+	}
+	clean := scanFixture(t, "testdata/ta06/clean", "TA06")
+	if countStatus(clean, policy.StatusFail) != 0 {
+		t.Errorf("expected zero TA06 FAILs on the clean fixture, got %+v", clean)
+	}
+}
+
 // TestPolicyLoadFailureIsFatal — NewEvaluator must refuse to build a partial
 // Evaluator if a policy fails to compile. There's no way to inject a broken
 // .rego file into the embedded FS from a black-box test, so this instead
 // documents and asserts the actual behavior: a healthy NewEvaluator call
-// prepares all 5 rules or none, never a subset. See ErrPolicyLoadFailed.
+// prepares all 6 rules or none, never a subset. See ErrPolicyLoadFailed.
 func TestPolicyLoadFailureIsFatal(t *testing.T) {
 	ev, err := policy.NewEvaluator(context.Background())
 	if err != nil {
 		t.Fatalf("NewEvaluator with valid embedded policies should not fail: %v", err)
 	}
-	if got, want := len(ev.RuleIDs()), 5; got != want {
+	if got, want := len(ev.RuleIDs()), 6; got != want {
 		t.Errorf("RuleIDs() = %d rules, want %d — all-or-nothing loading means a partial set should never occur", got, want)
 	}
 }

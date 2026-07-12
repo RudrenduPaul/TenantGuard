@@ -23,8 +23,9 @@ type regoMCPTool struct {
 }
 
 type regoCron struct {
-	Tenant      string `json:"tenant"`
-	TargetAgent string `json:"target_agent"`
+	Tenant          string `json:"tenant"`
+	TargetAgent     string `json:"target_agent"`
+	CreatorCaptured bool   `json:"captures_creator_identity"`
 }
 
 type regoAgent struct {
@@ -55,7 +56,7 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 		out.MCPTools = append(out.MCPTools, regoMCPTool{URL: m.URL, ValidatesPrivate: m.ValidatesPrivate})
 	}
 	for _, c := range cfg.CronSchedules {
-		out.CronSchedules = append(out.CronSchedules, regoCron{Tenant: c.Tenant, TargetAgent: c.TargetAgent})
+		out.CronSchedules = append(out.CronSchedules, regoCron{Tenant: c.Tenant, TargetAgent: c.TargetAgent, CreatorCaptured: c.CreatorCaptured})
 	}
 	for _, a := range cfg.Agents {
 		out.Agents = append(out.Agents, regoAgent{Name: a.Name, Tenant: a.Tenant})
