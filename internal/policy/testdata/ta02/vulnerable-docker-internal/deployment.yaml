@@ -1,0 +1,11 @@
+# TA02 vulnerable fixture — reproduces the exact goclaw#1070 headline repro:
+# a hostname (host.docker.internal) that resolves to a private IP
+# (10.18.231.2, matching the real issue report) but has no private-looking
+# substring in the URL text itself, so pre-CIDR/pre-resolution
+# string-prefix matching would silently miss it. The corresponding Go test
+# (TestTA02_HostnameResolution) overrides collector.LookupHost to
+# deterministically simulate that resolution without live DNS.
+tools:
+  mcp:
+    - url: http://host.docker.internal:8765/mcp
+      validates_private: false

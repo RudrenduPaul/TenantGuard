@@ -1,0 +1,10 @@
+# Fixture for TestCollectFromGoclawEnv — two MCP tools with real hostnames
+# (no literal IP), one of which the test's GOCLAW_MCP_ALLOWED_HOSTS env var
+# will name. collector.LookupHost is overridden by the test, so this
+# fixture doesn't depend on live DNS.
+tools:
+  mcp:
+    - url: https://mcp.internal.example.com/tools
+      validates_private: false
+    - url: https://unrelated.example.com/tools
+      validates_private: false
