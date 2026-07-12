@@ -1,0 +1,7 @@
+# TA12 vulnerable fixture — reproduces goclaw#954: no owner_ids are declared
+# (so no account is guaranteed to be treated as emergency sysadmin) and no
+# recovery command is declared either, risking permanent operator lockout.
+owner:
+  owner_ids: []
+  gateway_token_env: ""
+  has_recovery_command: false

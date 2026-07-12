@@ -20,3 +20,9 @@ All notable changes to this project are documented here.
 - GitHub Action wrapper (`action/`) for CI-triggered scans with SARIF upload.
 - Distribution via Homebrew tap, `go install`, and GitHub Releases (GoReleaser,
   cross-platform, sigstore-signed, with an SBOM attached).
+- TA12: a sixth, deployment-level rule checking that a deployment guarantees
+  owner/sysadmin recovery access (a valid gateway-token-authenticated
+  `system` account guaranteed treated as emergency sysadmin, and a declared
+  recovery/reset command), mapped to `goclaw#954`, a maintainer-acknowledged
+  CRITICAL design gap describing owner/sysadmin configuration with no
+  guaranteed recovery path.

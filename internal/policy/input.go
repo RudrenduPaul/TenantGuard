@@ -6,11 +6,13 @@ import "github.com/RudrenduPaul/TenantGuard/internal/collector"
 // excludes collector.Location — Rego only needs to identify *which* array
 // index is a violation; Go maps that index back to a Location afterward.
 type regoInput struct {
-	Sandboxes     []regoSandbox `json:"sandboxes"`
-	MCPTools      []regoMCPTool `json:"mcp_tools"`
-	CronSchedules []regoCron    `json:"cron_schedules"`
-	Agents        []regoAgent   `json:"agents"`
-	ExecTools     []regoExec    `json:"exec_tools"`
+	Sandboxes          []regoSandbox `json:"sandboxes"`
+	MCPTools           []regoMCPTool `json:"mcp_tools"`
+	CronSchedules      []regoCron    `json:"cron_schedules"`
+	Agents             []regoAgent   `json:"agents"`
+	ExecTools          []regoExec    `json:"exec_tools"`
+	OwnerIDs           []string      `json:"owner_ids"`
+	HasRecoveryCommand bool          `json:"has_recovery_command"`
 }
 
 type regoSandbox struct {
@@ -69,5 +71,13 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 		}
 		out.ExecTools = append(out.ExecTools, re)
 	}
+	// OwnerIDs is always a non-nil (possibly empty) slice here so Rego's
+	// count(input.owner_ids) sees a concrete array, never null — count()
+	// errors on null instead of treating it as zero.
+	out.OwnerIDs = cfg.Owner.OwnerIDs
+	if out.OwnerIDs == nil {
+		out.OwnerIDs = []string{}
+	}
+	out.HasRecoveryCommand = cfg.Owner.HasRecoveryCommand
 	return out
 }

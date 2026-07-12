@@ -1,4 +1,4 @@
-# A fully compliant deployment, passing all 5 TA0N checks — used by
+# A fully compliant deployment, passing all 6 TA0N checks — used by
 # TestCleanTargetExitsZero.
 sandbox:
   mounts:
@@ -22,3 +22,8 @@ schedules:
 agents:
   - name: research-agent-a
     tenant: tenant-a
+owner:
+  owner_ids:
+    - system
+  gateway_token_env: TENANTGUARD_GATEWAY_TOKEN
+  has_recovery_command: true

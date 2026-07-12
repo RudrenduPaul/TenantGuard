@@ -16,7 +16,7 @@ var regoFS embed.FS
 
 // ruleOrder is fixed so terminal/SARIF output is always in the same order,
 // and so a policy load failure can name exactly which rule failed to prepare.
-var ruleOrder = []string{"TA01", "TA02", "TA03", "TA04", "TA05"}
+var ruleOrder = []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA12"}
 
 // preparedRule pairs a rule ID with its compiled query, built once at
 // Evaluator construction via PrepareForEval — per OPA's own documented
@@ -110,6 +110,8 @@ func (e *Evaluator) Evaluate(ctx context.Context, cfg *collector.CollectedConfig
 			})...)
 		case "TA05":
 			findings = append(findings, buildTA05Findings(cfg, results)...)
+		case "TA12":
+			findings = append(findings, buildTA12Findings(cfg, results)...)
 		}
 	}
 	return findings, nil
@@ -218,6 +220,46 @@ func buildTA05Findings(cfg *collector.CollectedConfig, results rego.ResultSet) [
 		}
 	}
 	return out
+}
+
+// buildTA12Findings produces exactly one Finding for TA12 per scan. Unlike
+// TA01-TA05, TA12 is a deployment-level check (does this deployment, as a
+// whole, guarantee owner/sysadmin recovery access?), not a per-array-entry
+// check, so there is no total/violations-map loop like buildFindings uses.
+// A Finding is always emitted, even when no owner: section was ever
+// declared in any scanned file — an absent section is FAIL-worthy per
+// goclaw#954's whole point (permanent operator lockout risk), never a
+// reason to silently skip emitting a result.
+//
+// ta12.rego's violations set is a simple sentinel: empty means PASS, any
+// non-empty result (regardless of what it contains) means FAIL. This
+// function only checks emptiness, mirroring how extractViolations is used
+// for TA01-TA04 but without needing per-index accounting.
+func buildTA12Findings(cfg *collector.CollectedConfig, results rego.ResultSet) []Finding {
+	meta := ruleMetadata["TA12"]
+
+	status := StatusPass
+	if len(results) > 0 && len(results[0].Expressions) > 0 {
+		if raw, ok := results[0].Expressions[0].Value.([]interface{}); ok && len(raw) > 0 {
+			status = StatusFail
+		}
+	}
+
+	loc := cfg.Owner.Location
+	if !cfg.Owner.Declared {
+		// No owner: section was ever declared in any scanned file — cite the
+		// deployment itself rather than an empty Location{}.
+		loc = collector.Location{File: cfg.SourceDeployment}
+	}
+
+	return []Finding{{
+		RuleID:      "TA12",
+		Status:      status,
+		Location:    loc,
+		Description: meta.description,
+		MapsToIssue: meta.mapsToIssue,
+		Provisional: true,
+	}}
 }
 
 func lower(s string) string {

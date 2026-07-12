@@ -1,0 +1,6 @@
+# TA12 absent fixture — no owner: section is declared at all. Per goclaw#954,
+# absence is FAIL-worthy: it guarantees nothing about sysadmin recovery
+# access, not "nothing to check."
+sandbox:
+  mounts:
+    - path: /shared/${TENANT_ID}/workspace
