@@ -23,6 +23,7 @@ schedules:
   cron:
     - tenant: tenant-a
       target_agent: research-agent-a
+      captures_creator_identity: true
 agents:
   - name: research-agent-a
     tenant: tenant-a
