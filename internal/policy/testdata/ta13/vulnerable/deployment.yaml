@@ -1,0 +1,8 @@
+# TA13 vulnerable fixture — reproduces goclaw#91: no bridge: section is
+# declared anywhere in this deployment, so the MCP/CLI bridge context
+# headers are unsigned by default (X-Bridge-Sig never verified). Absence is
+# treated the same as an explicit false: TA13 fails loudly rather than
+# scanning clean when nothing was declared.
+sandbox:
+  mounts:
+    - path: /shared/${TENANT_ID}/workspace

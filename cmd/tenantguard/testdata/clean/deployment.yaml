@@ -4,6 +4,9 @@ sandbox:
   mounts:
     - path: /shared/${TENANT_ID}/workspace
   on_unavailable: fail_closed
+bridge:
+  hmac_enabled: true
+  context_headers_signed: true
 tools:
   mcp:
     - url: https://api.example.com/tools

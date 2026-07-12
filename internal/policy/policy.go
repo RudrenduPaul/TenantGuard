@@ -16,7 +16,7 @@ var regoFS embed.FS
 
 // ruleOrder is fixed so terminal/SARIF output is always in the same order,
 // and so a policy load failure can name exactly which rule failed to prepare.
-var ruleOrder = []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA08", "TA09", "TA10", "TA12"}
+var ruleOrder = []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA08", "TA09", "TA10", "TA12", "TA13"}
 
 // preparedRule pairs a rule ID with its compiled query, built once at
 // Evaluator construction via PrepareForEval — per OPA's own documented
@@ -48,9 +48,9 @@ func (e *ErrPolicyLoadFailed) Error() string {
 
 func (e *ErrPolicyLoadFailed) Unwrap() error { return e.Err }
 
-// NewEvaluator compiles every TA0N policy named in ruleOrder. If any one
-// fails to compile, it returns an error and no partially-usable Evaluator —
-// see ErrPolicyLoadFailed.
+// NewEvaluator compiles every TA0N policy in ruleOrder. If any one fails to
+// compile, it returns an error and no partially-usable Evaluator — see
+// ErrPolicyLoadFailed.
 func NewEvaluator(ctx context.Context) (*Evaluator, error) {
 	ev := &Evaluator{}
 	for _, id := range ruleOrder {
@@ -122,6 +122,8 @@ func (e *Evaluator) Evaluate(ctx context.Context, cfg *collector.CollectedConfig
 			})...)
 		case "TA12":
 			findings = append(findings, buildTA12Findings(cfg, results)...)
+		case "TA13":
+			findings = append(findings, buildTA13Findings(cfg, results)...)
 		}
 	}
 	return findings, nil
@@ -293,6 +295,37 @@ func buildTA12Findings(cfg *collector.CollectedConfig, results rego.ResultSet) [
 
 	return []Finding{{
 		RuleID:      "TA12",
+		Status:      status,
+		Location:    loc,
+		Description: meta.description,
+		MapsToIssue: meta.mapsToIssue,
+		Provisional: true,
+	}}
+}
+
+// buildTA13Findings produces exactly one TA13 Finding per scan — TA13 is
+// deployment-level (a single bridge: section), not a per-entry list, so it
+// doesn't fit buildFindings' one-Finding-per-array-index shape. PASS only
+// when both bridge.hmac_enabled and bridge.context_headers_signed are true;
+// FAIL otherwise, including when no file in the target declared a bridge:
+// section at all (cfg.Bridge.Declared == false), matching the ta13.rego
+// violation shape where an undeclared field defaults to false.
+func buildTA13Findings(cfg *collector.CollectedConfig, results rego.ResultSet) []Finding {
+	meta := ruleMetadata["TA13"]
+	violations := extractViolations(results)
+
+	status := StatusPass
+	if violations[0] {
+		status = StatusFail
+	}
+
+	loc := cfg.Bridge.Location
+	if !cfg.Bridge.Declared {
+		loc = collector.Location{File: cfg.SourceDeployment}
+	}
+
+	return []Finding{{
+		RuleID:      "TA13",
 		Status:      status,
 		Location:    loc,
 		Description: meta.description,
