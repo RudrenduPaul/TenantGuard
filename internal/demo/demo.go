@@ -1,8 +1,9 @@
 // Package demo bundles a single synthetic deployment config combining one
-// violation of each TA01-TA05 rule, so `tenantguard scan --demo` reaches a
-// real, HIPAA-cited finding with zero setup. This closes the TTHW gap found
-// during /plan-devex-review against Trivy-class scanners, which can scan
-// anything on the developer's machine with no config authoring required.
+// violation of each TA01-TA05 and TA07 rule, so `tenantguard scan --demo`
+// reaches a real, HIPAA-cited finding with zero setup. This closes the TTHW
+// gap found during /plan-devex-review against Trivy-class scanners, which
+// can scan anything on the developer's machine with no config authoring
+// required.
 package demo
 
 import (

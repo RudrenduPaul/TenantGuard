@@ -1,8 +1,12 @@
-# A fully compliant deployment, passing all 5 TA0N checks — used by
+# A fully compliant deployment, passing all 6 TA0N checks — used by
 # TestCleanTargetExitsZero.
 sandbox:
   mounts:
     - path: /shared/${TENANT_ID}/workspace
+      user: sandbox
+      env_mode: isolated
+      tmpfs_flags: [noexec, nosuid, nodev]
+      cap_add: []
 tools:
   mcp:
     - url: https://api.example.com/tools
