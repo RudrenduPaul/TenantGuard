@@ -60,4 +60,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "exec-approval allow-always entry is keyed on basename only, not a full path scope",
 		mapsToIssue: "goclaw#1216",
 	},
+	"TA06": {
+		id:          "TA06",
+		description: "cron binding does not declare that its store layer captures/replays the human creator's sender identity at fire time",
+		mapsToIssue: "goclaw#1129",
+	},
 }
