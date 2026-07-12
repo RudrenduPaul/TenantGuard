@@ -90,4 +90,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "browser/container profile storage path is not scoped per-agent/per-tenant",
 		mapsToIssue: "goclaw#778",
 	},
+	"TA06": {
+		id:          "TA06",
+		description: "cron binding does not declare that its store layer captures/replays the human creator's sender identity at fire time",
+		mapsToIssue: "goclaw#1129",
+	},
 }

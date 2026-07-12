@@ -1,5 +1,6 @@
 // Package demo bundles a single synthetic deployment config combining one
-// violation of each TA01-TA05 rule plus TA09, so `tenantguard scan --demo`
+// violation of each TA01-TA05 rule plus TA09/TA10/TA13 (deployment-level
+// checks) and TA06 (cron creator identity), so `tenantguard scan --demo`
 // reaches a real, HIPAA-cited finding with zero setup.
 package demo
 

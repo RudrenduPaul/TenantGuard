@@ -1,0 +1,12 @@
+# TA06 vulnerable fixture — reproduces goclaw#1129: the cron binding does not
+# declare that its store layer captures/replays the human creator's sender
+# identity at fire time. A cron job created in a group context would lose the
+# human sender entirely once it fires, and a legitimate group-context
+# mutation gets denied as "system context."
+schedules:
+  cron:
+    - tenant: tenant-a
+      target_agent: research-agent-a
+agents:
+  - name: research-agent-a
+    tenant: tenant-a

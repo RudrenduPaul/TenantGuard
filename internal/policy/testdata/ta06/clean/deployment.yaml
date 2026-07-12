@@ -1,0 +1,12 @@
+# TA06 clean fixture — the cron binding declares that its store layer
+# captures/replays the human creator's sender identity at fire time, so a
+# group-context mutation at fire time is attributed to the real human sender
+# rather than denied as "system context."
+schedules:
+  cron:
+    - tenant: tenant-a
+      target_agent: research-agent-a
+      captures_creator_identity: true
+agents:
+  - name: research-agent-a
+    tenant: tenant-a
