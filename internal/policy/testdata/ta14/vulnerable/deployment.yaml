@@ -1,0 +1,7 @@
+# TA14 vulnerable fixture — reproduces the class of gap goclaw PR #778 fixed
+# ("cross-agent browser profile isolation"): a browser profile storage path
+# shared across agents/tenants, no ${TENANT_ID} scoping placeholder.
+resources:
+  browser:
+    profiles:
+      - path: /profiles/chrome

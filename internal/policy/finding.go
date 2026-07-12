@@ -85,4 +85,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "MCP/CLI bridge does not declare HMAC-signed context headers (bridge.hmac_enabled and bridge.context_headers_signed)",
 		mapsToIssue: "goclaw#91",
 	},
+	"TA14": {
+		id:          "TA14",
+		description: "browser/container profile storage path is not scoped per-agent/per-tenant",
+		mapsToIssue: "goclaw#778",
+	},
 }
