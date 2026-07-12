@@ -3,6 +3,10 @@
 sandbox:
   mounts:
     - path: /shared/${TENANT_ID}/workspace
+      user: sandbox
+      env_mode: isolated
+      tmpfs_flags: [noexec, nosuid, nodev]
+      cap_add: []
   on_unavailable: fail_closed
 bridge:
   hmac_enabled: true

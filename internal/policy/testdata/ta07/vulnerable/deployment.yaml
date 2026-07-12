@@ -1,0 +1,13 @@
+# TA07 vulnerable fixture — reproduces goclaw#1014/#1015 (root user, full
+# host-env passthrough) and goclaw#728/#524 (tmpfs missing noexec/nosuid/
+# nodev, dangerous cap_add entries). The mount path is left TENANT_ID-scoped
+# so this fixture stays clean on TA01 and dirty only on TA07.
+sandbox:
+  mounts:
+    - path: /shared/${TENANT_ID}/workspace
+      user: root
+      env_mode: inherit_host
+      tmpfs_flags: []
+      cap_add:
+        - SETUID
+        - CHOWN
