@@ -65,4 +65,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "provider's OAuth/credential token storage does not declare a recognized strong encryption-at-rest algorithm",
 		mapsToIssue: "goclaw#65",
 	},
+	"TA09": {
+		id:          "TA09",
+		description: "sandbox fail-closed posture not declared (sandbox.on_unavailable must be \"fail_closed\")",
+		mapsToIssue: "goclaw#246",
+	},
 }

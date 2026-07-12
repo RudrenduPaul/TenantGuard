@@ -6,12 +6,17 @@ import "github.com/RudrenduPaul/TenantGuard/internal/collector"
 // excludes collector.Location — Rego only needs to identify *which* array
 // index is a violation; Go maps that index back to a Location afterward.
 type regoInput struct {
-	Sandboxes     []regoSandbox  `json:"sandboxes"`
-	MCPTools      []regoMCPTool  `json:"mcp_tools"`
-	CronSchedules []regoCron     `json:"cron_schedules"`
-	Agents        []regoAgent    `json:"agents"`
-	ExecTools     []regoExec     `json:"exec_tools"`
-	Providers     []regoProvider `json:"providers"`
+	Sandboxes []regoSandbox `json:"sandboxes"`
+	// SandboxOnUnavailable and SandboxOnUnavailableDeclared back TA09, a
+	// deployment-level scalar check rather than a per-index array check --
+	// see collector.CollectedConfig's matching fields for why.
+	SandboxOnUnavailable         string         `json:"sandbox_on_unavailable"`
+	SandboxOnUnavailableDeclared bool           `json:"sandbox_on_unavailable_declared"`
+	MCPTools                     []regoMCPTool  `json:"mcp_tools"`
+	CronSchedules                []regoCron     `json:"cron_schedules"`
+	Agents                       []regoAgent    `json:"agents"`
+	ExecTools                    []regoExec     `json:"exec_tools"`
+	Providers                    []regoProvider `json:"providers"`
 }
 
 type regoSandbox struct {
@@ -66,6 +71,8 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 	for _, s := range cfg.Sandboxes {
 		out.Sandboxes = append(out.Sandboxes, regoSandbox{Path: s.Path, ScopedPerTenant: s.ScopedPerTenant})
 	}
+	out.SandboxOnUnavailable = cfg.SandboxOnUnavailable
+	out.SandboxOnUnavailableDeclared = cfg.SandboxOnUnavailableDeclared
 	for _, m := range cfg.MCPTools {
 		out.MCPTools = append(out.MCPTools, regoMCPTool{
 			URL:                m.URL,

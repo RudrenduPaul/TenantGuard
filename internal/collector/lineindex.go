@@ -48,6 +48,26 @@ func (li lineIndexer) lookup(path string, itemIndex int) int {
 	return node.Content[itemIndex].Line
 }
 
+// lookupScalar resolves a dotted path of mapping keys only (no sequence
+// index) and returns the source line of the scalar value found there, plus
+// whether the path was declared at all. This is what lets a deployment-level
+// singleton field like sandbox.on_unavailable (TA09) distinguish "declared
+// but wrong value" (cite a real line) from "never declared" (no line to
+// cite, found is false).
+func (li lineIndexer) lookupScalar(path string) (line int, found bool) {
+	if li.root == nil || len(li.root.Content) == 0 {
+		return 0, false
+	}
+	node := li.root.Content[0]
+	for _, part := range strings.Split(path, ".") {
+		node = mapValue(node, part)
+		if node == nil {
+			return 0, false
+		}
+	}
+	return node.Line, true
+}
+
 // mapValue returns the value node for key in a yaml mapping node, or nil if
 // node isn't a mapping or the key isn't present.
 func mapValue(node *yaml.Node, key string) *yaml.Node {
