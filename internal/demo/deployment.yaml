@@ -28,3 +28,9 @@ schedules:
 agents:
   - name: research-agent-tenant-b
     tenant: tenant-b
+
+owner: # PASS (TA12): a real deployment guarantees sysadmin recovery access
+  owner_ids:
+    - system
+  gateway_token_env: TENANTGUARD_GATEWAY_TOKEN
+  has_recovery_command: true

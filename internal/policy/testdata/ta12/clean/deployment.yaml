@@ -1,0 +1,9 @@
+# TA12 clean fixture — a valid gateway-token-authenticated system account is
+# guaranteed to be treated as emergency sysadmin, and a recovery command is
+# declared, so a misconfigured owner section can never cause permanent
+# operator lockout.
+owner:
+  owner_ids:
+    - system
+  gateway_token_env: TENANTGUARD_GATEWAY_TOKEN
+  has_recovery_command: true
