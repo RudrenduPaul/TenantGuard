@@ -35,3 +35,9 @@ agents:
     # FAIL (TA10): no overrides declared for workspace_restriction or
     # sandbox_config, so this agent silently inherits an undeclared global
     # default instead of an explicit per-agent value.
+
+owner: # PASS (TA12): a real deployment guarantees sysadmin recovery access
+  owner_ids:
+    - system
+  gateway_token_env: TENANTGUARD_GATEWAY_TOKEN
+  has_recovery_command: true

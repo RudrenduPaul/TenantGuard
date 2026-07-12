@@ -203,6 +203,28 @@ func TestTA10(t *testing.T) {
 	}
 }
 
+func TestTA12(t *testing.T) {
+	vuln := scanFixture(t, "testdata/ta12/vulnerable", "TA12")
+	if countStatus(vuln, policy.StatusFail) == 0 {
+		t.Errorf("expected at least one TA12 FAIL on the vulnerable fixture, got %+v", vuln)
+	}
+	clean := scanFixture(t, "testdata/ta12/clean", "TA12")
+	if countStatus(clean, policy.StatusFail) != 0 {
+		t.Errorf("expected zero TA12 FAILs on the clean fixture, got %+v", clean)
+	}
+	// TA12 is a deployment-level check: an owner: section that's entirely
+	// absent must still FAIL, never be silently skipped, since absence
+	// guarantees nothing about sysadmin recovery access (goclaw#954's whole
+	// point).
+	absent := scanFixture(t, "testdata/ta12/absent", "TA12")
+	if countStatus(absent, policy.StatusFail) == 0 {
+		t.Errorf("expected a TA12 FAIL when no owner: section is declared at all, got %+v", absent)
+	}
+	if len(absent) != 1 {
+		t.Errorf("expected exactly one TA12 Finding per scan (deployment-level check), got %d: %+v", len(absent), absent)
+	}
+}
+
 // TestPolicyLoadFailureIsFatal — NewEvaluator must refuse to build a partial
 // Evaluator if a policy fails to compile. There's no way to inject a broken
 // .rego file into the embedded FS from a black-box test, so this instead
@@ -213,7 +235,7 @@ func TestPolicyLoadFailureIsFatal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEvaluator with valid embedded policies should not fail: %v", err)
 	}
-	if got, want := len(ev.RuleIDs()), 8; got != want {
+	if got, want := len(ev.RuleIDs()), 9; got != want {
 		t.Errorf("RuleIDs() = %d rules, want %d — all-or-nothing loading means a partial set should never occur", got, want)
 	}
 }
