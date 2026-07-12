@@ -1,0 +1,10 @@
+# TA08 vulnerable fixture — reproduces the gap goclaw#65 closes: a provider's
+# OAuth token storage config either omits an explicit encryption declaration
+# entirely, or declares one that isn't a recognized strong-encryption
+# algorithm for the persisted credential tokens.
+providers:
+  - name: chatgpt-codex
+  - name: legacy-provider
+    oauth:
+      token_storage:
+        encryption: none
