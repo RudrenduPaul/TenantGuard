@@ -60,4 +60,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "exec-approval allow-always entry is keyed on basename only, not a full path scope",
 		mapsToIssue: "goclaw#1216",
 	},
+	"TA07": {
+		id:          "TA07",
+		description: "sandbox container privilege is not hardened (root user by default, full host-env passthrough, tmpfs missing noexec/nosuid/nodev, or a dangerous Linux capability added)",
+		mapsToIssue: "goclaw#1014",
+	},
 }

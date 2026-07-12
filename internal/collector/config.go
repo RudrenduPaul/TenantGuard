@@ -29,10 +29,34 @@ func (l Location) String() string {
 }
 
 // SandboxMount is one entry in a deployment's sandbox.mounts list. TA01 checks
-// Path against a per-tenant scoping convention.
+// Path against a per-tenant scoping convention. TA07 checks the
+// container-privilege fields below (User, EnvMode, TmpfsFlags, CapAdd)
+// against a hardening baseline: root-as-default, host-environment
+// passthrough, tmpfs mounts missing exec-prevention flags, and excess Linux
+// capabilities all give a compromised sandboxed process an easy escape
+// path.
 type SandboxMount struct {
 	Path     string
 	Location Location
+
+	// User is the container/sandbox run-as user. Empty or "root" means the
+	// sandbox defaults to running as root (goclaw#1014, goclaw#1015).
+	User string
+	// EnvMode declares how the sandbox's process environment is populated.
+	// "inherit_host" passes through the full host environment, leaking
+	// host credentials/PATH into the sandboxed process (goclaw#1014,
+	// goclaw#1015); "isolated" or "explicit_allowlist" are the hardened
+	// options.
+	EnvMode string
+	// TmpfsFlags lists the mount flags applied to the sandbox's tmpfs
+	// mounts. Must include noexec, nosuid, and nodev to stop tmpfs being
+	// used to bypass exec/setuid controls (goclaw#728).
+	TmpfsFlags []string
+	// CapAdd lists Linux capabilities added beyond the container runtime's
+	// default set. Capabilities such as SETUID, SETGID, and CHOWN allow
+	// privilege escalation out of the sandbox and should not be added
+	// (goclaw#524).
+	CapAdd []string
 }
 
 // MCPToolEntry is one entry in a deployment's tools.mcp list. TA02 checks URL
@@ -106,7 +130,11 @@ type CollectedConfig struct {
 type rawDeploymentFile struct {
 	Sandbox struct {
 		Mounts []struct {
-			Path string `yaml:"path"`
+			Path       string   `yaml:"path"`
+			User       string   `yaml:"user"`
+			EnvMode    string   `yaml:"env_mode"`
+			TmpfsFlags []string `yaml:"tmpfs_flags"`
+			CapAdd     []string `yaml:"cap_add"`
 		} `yaml:"mounts"`
 	} `yaml:"sandbox"`
 	Tools struct {
@@ -210,8 +238,12 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 
 	for i, m := range raw.Sandbox.Mounts {
 		cfg.Sandboxes = append(cfg.Sandboxes, SandboxMount{
-			Path:     m.Path,
-			Location: Location{File: path, Line: lines.lookup("sandbox.mounts", i)},
+			Path:       m.Path,
+			User:       m.User,
+			EnvMode:    m.EnvMode,
+			TmpfsFlags: m.TmpfsFlags,
+			CapAdd:     m.CapAdd,
+			Location:   Location{File: path, Line: lines.lookup("sandbox.mounts", i)},
 		})
 	}
 	for i, m := range raw.Tools.MCP {

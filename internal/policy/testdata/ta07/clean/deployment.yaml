@@ -1,0 +1,15 @@
+# TA07 clean fixture — non-root user, isolated environment mode, tmpfs
+# mounted with the full safe flag set, and no dangerous Linux capabilities
+# added. The mount path is intentionally NOT tenant-scoped, so this fixture
+# is dirty on TA01 and clean only on TA07 — scanFixture filters by rule ID,
+# so TestTA07 only asserts on the TA07 findings.
+sandbox:
+  mounts:
+    - path: /shared/workspace
+      user: sandbox
+      env_mode: isolated
+      tmpfs_flags:
+        - noexec
+        - nosuid
+        - nodev
+      cap_add: []
