@@ -100,4 +100,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "sandbox container privilege is not hardened (root user by default, full host-env passthrough, tmpfs missing noexec/nosuid/nodev, or a dangerous Linux capability added)",
 		mapsToIssue: "goclaw#1014",
 	},
+	"TA11": {
+		id:          "TA11",
+		description: "channel/session device identity is shared across channel_instances declaring different tenants",
+		mapsToIssue: "goclaw#1064",
+	},
 }

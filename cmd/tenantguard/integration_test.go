@@ -36,13 +36,15 @@ func TestEndToEndBinary(t *testing.T) {
 	if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() != exitFindings {
 		t.Errorf("exit code = %d, want %d (exitFindings)", exitErr.ExitCode(), exitFindings)
 	}
-	for _, rule := range []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA09", "TA10", "TA06", "TA07"} {
+	for _, rule := range []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA09", "TA10", "TA06", "TA07", "TA11"} {
 		if !strings.Contains(string(termOut), rule) {
 			t.Errorf("expected %s to appear in terminal output, got:\n%s", rule, termOut)
 		}
 	}
 
-	// SARIF output: same scan, valid SARIF with 6 results.
+	// SARIF output: same scan, valid SARIF with 12 results -- TA11's rule
+	// flags both sides of the one colliding channel_instances pair in the
+	// demo fixture, so it contributes 2 findings, not 1.
 	sarifPath := filepath.Join(dir, "report.sarif")
 	sarifCmd := exec.Command(binPath, "scan", "--demo", "--format", "sarif", "--sarif-out", sarifPath)
 	if out, err := sarifCmd.CombinedOutput(); err == nil {
@@ -64,7 +66,7 @@ func TestEndToEndBinary(t *testing.T) {
 		t.Fatalf("expected 1 SARIF run, got %d", len(runs))
 	}
 	results, _ := runs[0].(map[string]interface{})["results"].([]interface{})
-	if len(results) != 10 {
-		t.Errorf("expected 10 SARIF results (one per violated rule: TA01-07, TA09, TA10, TA13 -- TA08/TA12/TA14 declare no providers/resource-profiles or PASS cleanly so contribute none), got %d", len(results))
+	if len(results) != 12 {
+		t.Errorf("expected 12 SARIF results (TA01-07,TA09,TA10,TA13 = 10, plus TA11 contributing 2 for its colliding pair -- TA08/TA12/TA14 declare no providers/resource-profiles or PASS cleanly so contribute none), got %d", len(results))
 	}
 }

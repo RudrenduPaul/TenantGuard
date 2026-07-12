@@ -22,6 +22,7 @@ type regoInput struct {
 	HMACEnabled                  bool                  `json:"bridge_hmac_enabled"`
 	ContextHeadersSigned         bool                  `json:"bridge_context_headers_signed"`
 	ResourceProfiles             []regoResourceProfile `json:"resource_profiles"`
+	ChannelInstances             []regoChannelInstance `json:"channel_instances"`
 }
 
 type regoSandbox struct {
@@ -81,6 +82,15 @@ type regoExec struct {
 		AllowChainExec      bool `json:"allow_chain_exec"`
 	} `json:"env_policy"`
 	Approvals []regoApproval `json:"approvals"`
+}
+
+// regoChannelInstance is one declared messaging-channel instance. TA11
+// correlates DeviceSessionID across entries to catch cross-tenant identity
+// sharing (goclaw#1064/#1065).
+type regoChannelInstance struct {
+	Channel         string `json:"channel"`
+	Tenant          string `json:"tenant"`
+	DeviceSessionID string `json:"device_session_id"`
 }
 
 func toRegoInput(cfg *collector.CollectedConfig) regoInput {
@@ -155,5 +165,8 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 	out.HasRecoveryCommand = cfg.Owner.HasRecoveryCommand
 	out.HMACEnabled = cfg.Bridge.HMACEnabled
 	out.ContextHeadersSigned = cfg.Bridge.ContextHeadersSigned
+	for _, c := range cfg.ChannelInstances {
+		out.ChannelInstances = append(out.ChannelInstances, regoChannelInstance{Channel: c.Channel, Tenant: c.Tenant, DeviceSessionID: c.DeviceSessionID})
+	}
 	return out
 }

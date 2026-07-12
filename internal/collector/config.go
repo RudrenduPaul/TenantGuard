@@ -233,6 +233,20 @@ type BridgeConfig struct {
 	Location             Location
 }
 
+// ChannelInstance is one declared messaging-channel instance (e.g. a
+// WhatsApp, Slack, or Telegram connection), scoped to a tenant. TA11 checks
+// that no two channel_instances entries share the same DeviceSessionID while
+// declaring different Tenant values — goclaw#1064/#1065 showed that sharing
+// one device-session row (e.g. one whatsmeow device) across channel
+// instances lets a second tenant's channel silently connect as the first
+// tenant's already-paired account.
+type ChannelInstance struct {
+	Channel         string
+	Tenant          string
+	DeviceSessionID string
+	Location        Location
+}
+
 // CollectedConfig is the single merged document every Rego policy evaluates
 // against. It is built once per scan from every recognized config file under
 // the target directory.
@@ -265,6 +279,7 @@ type CollectedConfig struct {
 	Owner            OwnerConfig
 	Bridge           BridgeConfig
 	ResourceProfiles []ResourceProfile
+	ChannelInstances []ChannelInstance
 	// Warnings holds one message per config file containing a field this
 	// collector doesn't recognize (e.g. a newer goclaw schema), plus any
 	// per-entry best-effort enrichment failure (e.g. an MCP tool hostname
@@ -358,6 +373,11 @@ type rawDeploymentFile struct {
 		HMACEnabled          bool `yaml:"hmac_enabled"`
 		ContextHeadersSigned bool `yaml:"context_headers_signed"`
 	} `yaml:"bridge"`
+	ChannelInstances []struct {
+		Channel         string `yaml:"channel"`
+		Tenant          string `yaml:"tenant"`
+		DeviceSessionID string `yaml:"device_session_id"`
+	} `yaml:"channel_instances"`
 }
 
 // Collect walks target (a directory) and merges every *.yml/*.yaml file it
@@ -534,6 +554,14 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 			ContextHeadersSigned: raw.Bridge.ContextHeadersSigned,
 			Location:             Location{File: path, Line: line},
 		}
+	}
+	for i, c := range raw.ChannelInstances {
+		cfg.ChannelInstances = append(cfg.ChannelInstances, ChannelInstance{
+			Channel:         c.Channel,
+			Tenant:          c.Tenant,
+			DeviceSessionID: c.DeviceSessionID,
+			Location:        Location{File: path, Line: lines.lookup("channel_instances", i)},
+		})
 	}
 
 	return nil

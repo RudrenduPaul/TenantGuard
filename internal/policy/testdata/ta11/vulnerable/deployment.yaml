@@ -1,0 +1,11 @@
+# TA11 vulnerable fixture — reproduces goclaw#1064/#1065: two channel_instances
+# for different tenants share the same device_session_id, so the second
+# tenant's WhatsApp channel silently connects as the first tenant's
+# already-paired account.
+channel_instances:
+  - channel: whatsapp
+    tenant: tenant-a
+    device_session_id: sess-shared-1
+  - channel: whatsapp
+    tenant: tenant-b
+    device_session_id: sess-shared-1
