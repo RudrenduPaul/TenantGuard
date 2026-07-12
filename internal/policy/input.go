@@ -18,9 +18,17 @@ type regoSandbox struct {
 	ScopedPerTenant bool   `json:"scoped_per_tenant"`
 }
 
+// regoMCPTool is the Rego-facing shape of collector.MCPToolEntry. It carries
+// everything TA02 needs to decide private-target classification (a literal
+// IP in URL, or ResolvedIPs captured once at collection time) and whether
+// that target is verified-safe (ValidatesPrivate + PinsResolvedIP, or an
+// explicit AllowedPrivateHost escape hatch).
 type regoMCPTool struct {
-	URL              string `json:"url"`
-	ValidatesPrivate bool   `json:"validates_private"`
+	URL                string   `json:"url"`
+	ValidatesPrivate   bool     `json:"validates_private"`
+	PinsResolvedIP     bool     `json:"pins_resolved_ip"`
+	AllowedPrivateHost bool     `json:"allowed_private_host"`
+	ResolvedIPs        []string `json:"resolved_ips"`
 }
 
 type regoCron struct {
@@ -53,7 +61,13 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 		out.Sandboxes = append(out.Sandboxes, regoSandbox{Path: s.Path, ScopedPerTenant: s.ScopedPerTenant})
 	}
 	for _, m := range cfg.MCPTools {
-		out.MCPTools = append(out.MCPTools, regoMCPTool{URL: m.URL, ValidatesPrivate: m.ValidatesPrivate})
+		out.MCPTools = append(out.MCPTools, regoMCPTool{
+			URL:                m.URL,
+			ValidatesPrivate:   m.ValidatesPrivate,
+			PinsResolvedIP:     m.PinsResolvedIP,
+			AllowedPrivateHost: m.ExplicitlyAllowedHost,
+			ResolvedIPs:        m.ResolvedIPs,
+		})
 	}
 	for _, c := range cfg.CronSchedules {
 		out.CronSchedules = append(out.CronSchedules, regoCron{Tenant: c.Tenant, TargetAgent: c.TargetAgent})
