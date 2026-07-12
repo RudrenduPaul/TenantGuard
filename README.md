@@ -40,6 +40,7 @@ Every finding names the exact config field at fault, the upstream issue it repro
 | TA03 | A scheduled job's target agent belongs to a different tenant, or doesn't exist at all | `goclaw#1217` |
 | TA04 | An exec tool denies direct env-dump reads but not indirect ones (e.g. a shell running `jq $ENV`) | `goclaw#1227` |
 | TA05 | An exec-approval "allow-always" entry is keyed on basename only, not a full path | `goclaw#1216` |
+| TA14 | Browser/container profile storage path is not scoped per-agent/per-tenant | `goclaw#778` |
 
 Every rule has a labeled vulnerable fixture and a labeled clean fixture in `internal/policy/testdata/`, so the detection claim above is reproducible: `go test ./internal/policy/... -v`.
 

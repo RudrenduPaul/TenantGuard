@@ -1,0 +1,5 @@
+# TA14 clean fixture — the browser profile storage path is scoped per tenant.
+resources:
+  browser:
+    profiles:
+      - path: /profiles/${TENANT_ID}/chrome

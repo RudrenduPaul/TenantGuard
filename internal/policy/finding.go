@@ -60,4 +60,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "exec-approval allow-always entry is keyed on basename only, not a full path scope",
 		mapsToIssue: "goclaw#1216",
 	},
+	"TA14": {
+		id:          "TA14",
+		description: "browser/container profile storage path is not scoped per-agent/per-tenant",
+		mapsToIssue: "goclaw#778",
+	},
 }
