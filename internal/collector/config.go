@@ -87,11 +87,25 @@ type MCPToolEntry struct {
 }
 
 // AgentEntry is one declared agent, scoped to a tenant. TA03 cross-references
-// this list against CronBinding.TargetAgent.
+// this list against CronBinding.TargetAgent. TA10 checks the two override
+// flags below: goclaw PR #145 found per-agent DB settings (restrict_to_
+// workspace, sandbox config, among others) were silently ignored at runtime
+// because tool config was baked in at process startup instead of resolved
+// per-agent. TenantGuard can't see that runtime bug from static YAML, but it
+// can flag deployments whose config layer never even declares a per-agent
+// override for these settings in the first place, and so is silently
+// inheriting an undeclared global default.
 type AgentEntry struct {
 	Name     string
 	Tenant   string
 	Location Location
+	// HasWorkspaceRestrictionOverride is true if this agent's YAML entry
+	// declares agents[].overrides.workspace_restriction explicitly (any
+	// value, including false) rather than leaving it undeclared.
+	HasWorkspaceRestrictionOverride bool
+	// HasSandboxConfigOverride is true if this agent's YAML entry declares a
+	// non-empty agents[].overrides.sandbox_config block.
+	HasSandboxConfigOverride bool
 }
 
 // CronBinding is one scheduled job. TA03 checks that TargetAgent belongs to
@@ -213,8 +227,12 @@ type rawDeploymentFile struct {
 		} `yaml:"cron"`
 	} `yaml:"schedules"`
 	Agents []struct {
-		Name   string `yaml:"name"`
-		Tenant string `yaml:"tenant"`
+		Name      string `yaml:"name"`
+		Tenant    string `yaml:"tenant"`
+		Overrides *struct {
+			WorkspaceRestriction *bool          `yaml:"workspace_restriction"`
+			SandboxConfig        map[string]any `yaml:"sandbox_config"`
+		} `yaml:"overrides"`
 	} `yaml:"agents"`
 	Providers []struct {
 		Name  string `yaml:"name"`
@@ -349,11 +367,16 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 		})
 	}
 	for i, a := range raw.Agents {
-		cfg.Agents = append(cfg.Agents, AgentEntry{
+		entry := AgentEntry{
 			Name:     a.Name,
 			Tenant:   a.Tenant,
 			Location: Location{File: path, Line: lines.lookup("agents", i)},
-		})
+		}
+		if a.Overrides != nil {
+			entry.HasWorkspaceRestrictionOverride = a.Overrides.WorkspaceRestriction != nil
+			entry.HasSandboxConfigOverride = len(a.Overrides.SandboxConfig) > 0
+		}
+		cfg.Agents = append(cfg.Agents, entry)
 	}
 	for i, p := range raw.Providers {
 		cfg.Providers = append(cfg.Providers, ProviderEntry{
