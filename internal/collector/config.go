@@ -75,6 +75,11 @@ type ExecToolEntry struct {
 type EnvPolicy struct {
 	DenyDirectEnvDump   bool
 	DenyIndirectEnvRead bool
+	// AllowChainExec mirrors goclaw PR#1033's per-CLI allow_chain_exec: when
+	// true, credential env vars are injected into and visible to every
+	// command in a shell operator chain (e.g. `which gh && gh pr list`),
+	// not just the credentialed binary itself.
+	AllowChainExec bool
 }
 
 // ApprovalEntry is one "allow-always" rule for an exec tool invocation.
@@ -119,6 +124,7 @@ type rawDeploymentFile struct {
 			EnvPolicy struct {
 				DenyDirectEnvDump   bool `yaml:"deny_direct_env_dump"`
 				DenyIndirectEnvRead bool `yaml:"deny_indirect_env_read"`
+				AllowChainExec      bool `yaml:"allow_chain_exec"`
 			} `yaml:"env_policy"`
 			Approvals []struct {
 				Basename   string `yaml:"basename"`
@@ -227,6 +233,7 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 			EnvPolicy: EnvPolicy{
 				DenyDirectEnvDump:   e.EnvPolicy.DenyDirectEnvDump,
 				DenyIndirectEnvRead: e.EnvPolicy.DenyIndirectEnvRead,
+				AllowChainExec:      e.EnvPolicy.AllowChainExec,
 			},
 			Location: Location{File: path, Line: lines.lookup("tools.exec", i)},
 		}
