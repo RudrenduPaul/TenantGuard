@@ -43,6 +43,7 @@ Every finding names the exact config field at fault, the upstream issue it repro
 | TA08 | A provider's OAuth/credential token storage doesn't declare a recognized strong encryption-at-rest algorithm | `goclaw#65` |
 | TA09 | Deployment never declares a fail-closed posture for when the sandbox is unavailable | `goclaw#246` |
 | TA10 | An agent doesn't explicitly declare a per-agent config override (workspace restriction or sandbox config), risking silent inheritance of an undeclared global default | `goclaw#145` (best-effort static proxy, not a runtime check) |
+| TA12 | Deployment does not guarantee owner/sysadmin recovery access (no `owner_ids` and/or no declared recovery command) | `goclaw#954` |
 
 Every rule has a labeled vulnerable fixture and a labeled clean fixture in `internal/policy/testdata/`, so the detection claim above is reproducible: `go test ./internal/policy/... -v`.
 

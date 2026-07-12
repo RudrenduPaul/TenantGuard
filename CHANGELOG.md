@@ -26,3 +26,9 @@ All notable changes to this project are documented here.
   for the runtime bug fixed in `goclaw` PR #145 (per-agent DB settings
   silently ignored because tool config was baked in at process startup); it
   cannot detect that Go-level bug itself, only under-specified config.
+- TA12: a sixth, deployment-level rule checking that a deployment guarantees
+  owner/sysadmin recovery access (a valid gateway-token-authenticated
+  `system` account guaranteed treated as emergency sysadmin, and a declared
+  recovery/reset command), mapped to `goclaw#954`, a maintainer-acknowledged
+  CRITICAL design gap describing owner/sysadmin configuration with no
+  guaranteed recovery path.
