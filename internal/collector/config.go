@@ -29,10 +29,16 @@ func (l Location) String() string {
 }
 
 // SandboxMount is one entry in a deployment's sandbox.mounts list. TA01 checks
-// Path against a per-tenant scoping convention.
+// Path against a per-tenant scoping convention, or accepts ScopedPerTenant as
+// a second, independent signal — an explicit declaration (by a human today,
+// or a future runtime/source collector) that the mount is actually scoped
+// per tenant even though Path itself doesn't carry the ${TENANT_ID}
+// convention's placeholder literal (e.g. a mount path computed by real Go
+// code will never contain that literal template token).
 type SandboxMount struct {
-	Path     string
-	Location Location
+	Path            string
+	ScopedPerTenant bool
+	Location        Location
 }
 
 // MCPToolEntry is one entry in a deployment's tools.mcp list. TA02 checks URL
@@ -106,7 +112,8 @@ type CollectedConfig struct {
 type rawDeploymentFile struct {
 	Sandbox struct {
 		Mounts []struct {
-			Path string `yaml:"path"`
+			Path            string `yaml:"path"`
+			ScopedPerTenant bool   `yaml:"scoped_per_tenant"`
 		} `yaml:"mounts"`
 	} `yaml:"sandbox"`
 	Tools struct {
@@ -210,8 +217,9 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 
 	for i, m := range raw.Sandbox.Mounts {
 		cfg.Sandboxes = append(cfg.Sandboxes, SandboxMount{
-			Path:     m.Path,
-			Location: Location{File: path, Line: lines.lookup("sandbox.mounts", i)},
+			Path:            m.Path,
+			ScopedPerTenant: m.ScopedPerTenant,
+			Location:        Location{File: path, Line: lines.lookup("sandbox.mounts", i)},
 		})
 	}
 	for i, m := range raw.Tools.MCP {

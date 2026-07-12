@@ -14,7 +14,8 @@ type regoInput struct {
 }
 
 type regoSandbox struct {
-	Path string `json:"path"`
+	Path            string `json:"path"`
+	ScopedPerTenant bool   `json:"scoped_per_tenant"`
 }
 
 type regoMCPTool struct {
@@ -49,7 +50,7 @@ type regoExec struct {
 func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 	out := regoInput{}
 	for _, s := range cfg.Sandboxes {
-		out.Sandboxes = append(out.Sandboxes, regoSandbox{Path: s.Path})
+		out.Sandboxes = append(out.Sandboxes, regoSandbox{Path: s.Path, ScopedPerTenant: s.ScopedPerTenant})
 	}
 	for _, m := range cfg.MCPTools {
 		out.MCPTools = append(out.MCPTools, regoMCPTool{URL: m.URL, ValidatesPrivate: m.ValidatesPrivate})
