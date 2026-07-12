@@ -45,6 +45,7 @@ Every finding names the exact config field at fault, the upstream issue it repro
 | TA10 | An agent doesn't explicitly declare a per-agent config override (workspace restriction or sandbox config), risking silent inheritance of an undeclared global default | `goclaw#145` (best-effort static proxy, not a runtime check) |
 | TA12 | Deployment does not guarantee owner/sysadmin recovery access (no `owner_ids` and/or no declared recovery command) | `goclaw#954` |
 | TA13 | MCP/CLI bridge exposed without HMAC-signed context headers (bridge.hmac_enabled / bridge.context_headers_signed) | `goclaw#91` |
+| TA14 | Browser/container profile storage path is not scoped per-agent/per-tenant | `goclaw#778` |
 
 Every rule has a labeled vulnerable fixture and a labeled clean fixture in `internal/policy/testdata/`, so the detection claim above is reproducible: `go test ./internal/policy/... -v`.
 

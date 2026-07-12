@@ -23,7 +23,7 @@ const hipaaTaxonomyFullName = "HIPAA Security Rule (provisional, TenantGuard's o
 func WriteSARIF(w io.Writer, findings []policy.Finding) error {
 	run := sarif.NewRunWithInformationURI(toolName, informationURI)
 
-	for _, id := range []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA08", "TA09", "TA10", "TA12", "TA13"} {
+	for _, id := range []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA08", "TA09", "TA10", "TA12", "TA13", "TA14"} {
 		run.AddRule(id)
 	}
 

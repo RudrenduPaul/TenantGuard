@@ -45,6 +45,17 @@ type SandboxMount struct {
 	Location        Location
 }
 
+// ResourceProfile is one entry in a deployment's resources.browser.profiles
+// list. TA14 checks Path against the same per-tenant scoping convention TA01
+// applies to sandbox mounts, but for browser/container profile storage
+// paths — a resource category goclaw's own tenant-isolation defects (PR
+// nextlevelbuilder/goclaw#778, "cross-agent browser profile isolation fix")
+// show is a genuine gap when left unscoped.
+type ResourceProfile struct {
+	Path     string
+	Location Location
+}
+
 // MCPToolEntry is one entry in a deployment's tools.mcp list. TA02 checks URL
 // for SSRF-risk targets that bypass declared validation.
 type MCPToolEntry struct {
@@ -214,8 +225,9 @@ type CollectedConfig struct {
 	// Owner captures the deployment's owner/sysadmin recovery guarantees.
 	// TA12 evaluates this as a single deployment-level Finding, not one per
 	// array entry, since it describes a global invariant rather than a list.
-	Owner  OwnerConfig
-	Bridge BridgeConfig
+	Owner            OwnerConfig
+	Bridge           BridgeConfig
+	ResourceProfiles []ResourceProfile
 	// Warnings holds one message per config file containing a field this
 	// collector doesn't recognize (e.g. a newer goclaw schema), plus any
 	// per-entry best-effort enrichment failure (e.g. an MCP tool hostname
@@ -241,6 +253,13 @@ type rawDeploymentFile struct {
 		// actually declared that posture.
 		OnUnavailable string `yaml:"on_unavailable"`
 	} `yaml:"sandbox"`
+	Resources struct {
+		Browser struct {
+			Profiles []struct {
+				Path string `yaml:"path"`
+			} `yaml:"profiles"`
+		} `yaml:"browser"`
+	} `yaml:"resources"`
 	Tools struct {
 		MCP []struct {
 			URL                string `yaml:"url"`
@@ -384,6 +403,12 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 		cfg.SandboxOnUnavailable = raw.Sandbox.OnUnavailable
 		cfg.SandboxOnUnavailableDeclared = true
 		cfg.SandboxOnUnavailableLocation = Location{File: path, Line: line}
+	}
+	for i, p := range raw.Resources.Browser.Profiles {
+		cfg.ResourceProfiles = append(cfg.ResourceProfiles, ResourceProfile{
+			Path:     p.Path,
+			Location: Location{File: path, Line: lines.lookup("resources.browser.profiles", i)},
+		})
 	}
 	for i, m := range raw.Tools.MCP {
 		cfg.MCPTools = append(cfg.MCPTools, MCPToolEntry{

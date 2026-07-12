@@ -10,22 +10,27 @@ type regoInput struct {
 	// SandboxOnUnavailable and SandboxOnUnavailableDeclared back TA09, a
 	// deployment-level scalar check rather than a per-index array check --
 	// see collector.CollectedConfig's matching fields for why.
-	SandboxOnUnavailable         string         `json:"sandbox_on_unavailable"`
-	SandboxOnUnavailableDeclared bool           `json:"sandbox_on_unavailable_declared"`
-	MCPTools                     []regoMCPTool  `json:"mcp_tools"`
-	CronSchedules                []regoCron     `json:"cron_schedules"`
-	Agents                       []regoAgent    `json:"agents"`
-	ExecTools                    []regoExec     `json:"exec_tools"`
-	Providers                    []regoProvider `json:"providers"`
-	OwnerIDs                     []string       `json:"owner_ids"`
-	HasRecoveryCommand           bool           `json:"has_recovery_command"`
-	HMACEnabled                  bool           `json:"bridge_hmac_enabled"`
-	ContextHeadersSigned         bool           `json:"bridge_context_headers_signed"`
+	SandboxOnUnavailable         string                `json:"sandbox_on_unavailable"`
+	SandboxOnUnavailableDeclared bool                  `json:"sandbox_on_unavailable_declared"`
+	MCPTools                     []regoMCPTool         `json:"mcp_tools"`
+	CronSchedules                []regoCron            `json:"cron_schedules"`
+	Agents                       []regoAgent           `json:"agents"`
+	ExecTools                    []regoExec            `json:"exec_tools"`
+	Providers                    []regoProvider        `json:"providers"`
+	OwnerIDs                     []string              `json:"owner_ids"`
+	HasRecoveryCommand           bool                  `json:"has_recovery_command"`
+	HMACEnabled                  bool                  `json:"bridge_hmac_enabled"`
+	ContextHeadersSigned         bool                  `json:"bridge_context_headers_signed"`
+	ResourceProfiles             []regoResourceProfile `json:"resource_profiles"`
 }
 
 type regoSandbox struct {
 	Path            string `json:"path"`
 	ScopedPerTenant bool   `json:"scoped_per_tenant"`
+}
+
+type regoResourceProfile struct {
+	Path string `json:"path"`
 }
 
 // regoMCPTool is the Rego-facing shape of collector.MCPToolEntry. It carries
@@ -79,6 +84,9 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 	}
 	out.SandboxOnUnavailable = cfg.SandboxOnUnavailable
 	out.SandboxOnUnavailableDeclared = cfg.SandboxOnUnavailableDeclared
+	for _, r := range cfg.ResourceProfiles {
+		out.ResourceProfiles = append(out.ResourceProfiles, regoResourceProfile{Path: r.Path})
+	}
 	for _, m := range cfg.MCPTools {
 		out.MCPTools = append(out.MCPTools, regoMCPTool{
 			URL:                m.URL,
