@@ -1,0 +1,4 @@
+schedules:
+  cron:
+    - tenant: tenant-a
+      target_agent: research-agent-a

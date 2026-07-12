@@ -1,0 +1,6 @@
+sandbox:
+  mounts:
+    - path: /shared/${TENANT_ID}/workspace
+      an_unrecognized_field: true
+future_top_level_section:
+  something: goclaw might add in a later schema version

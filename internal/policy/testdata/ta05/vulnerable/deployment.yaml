@@ -1,0 +1,9 @@
+# TA05 vulnerable fixture — reproduces goclaw#1216: an "allow-always" approval
+# keyed on basename alone can be reused against a different, path-scoped
+# executable sharing that basename.
+tools:
+  exec:
+    - name: shell-exec
+      approvals:
+        - basename: python3
+          path_scoped: false

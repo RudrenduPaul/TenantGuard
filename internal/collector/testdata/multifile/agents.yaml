@@ -1,0 +1,3 @@
+agents:
+  - name: research-agent-a
+    tenant: tenant-a

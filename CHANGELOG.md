@@ -1,0 +1,22 @@
+# Changelog
+
+All notable changes to this project are documented here.
+
+## [Unreleased]
+
+### Added
+- Initial `tenantguard scan` CLI: five tenant-isolation rules (TA01-TA05), each
+  mapped to a confirmed, still-open GitHub issue in `goclaw`
+  (#1163, #1070, #1217, #1227, #1216).
+- OPA/Rego-embedded scan engine (`internal/policy/`), evaluated via prepared queries
+  against a single merged `CollectedConfig` document per scan.
+- Provisional HIPAA Security Rule Sec164.312 citation metadata on every FAIL finding
+  (`internal/compliance/`) — TenantGuard's own interpretation, not legal advice.
+- SARIF 2.1.0 export (`internal/report/sarif.go`) via `owenrumney/go-sarif`, with a
+  HIPAA taxonomy so citations round-trip through the `taxa`/rules schema.
+- Human-readable terminal output showing both FAIL and PASS results per scan.
+- `tenantguard scan --demo` — a bundled synthetic deployment reproducing all five
+  rule violations, for a zero-setup first scan.
+- GitHub Action wrapper (`action/`) for CI-triggered scans with SARIF upload.
+- Distribution via Homebrew tap, `go install`, and GitHub Releases (GoReleaser,
+  cross-platform, sigstore-signed, with an SBOM attached).

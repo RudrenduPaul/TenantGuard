@@ -1,0 +1,9 @@
+# TA04 vulnerable fixture — reproduces goclaw#1227: direct env-dump reads are
+# denied, but indirect reads (e.g. a shell invoking `jq $ENV`) are not covered
+# by the same denylist, leaving a leakage path open.
+tools:
+  exec:
+    - name: shell-exec
+      env_policy:
+        deny_direct_env_dump: true
+        deny_indirect_env_read: false

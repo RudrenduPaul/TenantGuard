@@ -1,0 +1,6 @@
+# TA02 vulnerable fixture — reproduces goclaw#1070: a saved MCP tool URL
+# targets a loopback address with no declared SSRF validation.
+tools:
+  mcp:
+    - url: http://127.0.0.1:9000/tools
+      validates_private: false

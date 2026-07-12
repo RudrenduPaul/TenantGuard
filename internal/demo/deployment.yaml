@@ -1,0 +1,30 @@
+# Bundled demo deployment for `tenantguard scan --demo` — a synthetic config
+# combining one violation of each TA01-TA05 rule, so a first-time user gets a
+# real, HIPAA-cited finding within seconds, with zero setup. Reused directly
+# from the same fixture pattern built for TA0N unit tests; this is not new
+# content authored just for the demo.
+sandbox:
+  mounts:
+    - path: /shared/workspace # FAIL (TA01): no ${TENANT_ID} scoping
+
+tools:
+  mcp:
+    - url: http://127.0.0.1:9000/tools # FAIL (TA02): private target, no SSRF validation declared
+      validates_private: false
+  exec:
+    - name: shell-exec
+      env_policy:
+        deny_direct_env_dump: true
+        deny_indirect_env_read: false # FAIL (TA04): direct denied, indirect not covered
+      approvals:
+        - basename: python3
+          path_scoped: false # FAIL (TA05): allow-always keyed on basename only
+
+schedules:
+  cron:
+    - tenant: tenant-a
+      target_agent: research-agent-tenant-b # FAIL (TA03): cron binding crosses tenant boundary
+
+agents:
+  - name: research-agent-tenant-b
+    tenant: tenant-b
