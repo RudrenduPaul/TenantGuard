@@ -1,11 +1,14 @@
 # Bundled demo deployment for `tenantguard scan --demo` — a synthetic config
-# combining one violation of each TA01-TA05 rule, so a first-time user gets a
-# real, HIPAA-cited finding within seconds, with zero setup. Reused directly
-# from the same fixture pattern built for TA0N unit tests; this is not new
+# combining one violation of each TA01-TA05 rule, plus TA09 (sandbox.
+# on_unavailable is never declared below), so a first-time user gets a real,
+# HIPAA-cited finding within seconds, with zero setup. Reused directly from
+# the same fixture pattern built for TA0N unit tests; this is not new
 # content authored just for the demo.
 sandbox:
   mounts:
     - path: /shared/workspace # FAIL (TA01): no ${TENANT_ID} scoping
+  # FAIL (TA09): on_unavailable is never declared, so there is no configured
+  # fail-closed posture if the sandbox becomes unavailable at runtime.
 
 tools:
   mcp:
