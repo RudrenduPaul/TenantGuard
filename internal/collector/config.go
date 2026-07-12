@@ -6,10 +6,14 @@
 package collector
 
 import (
+	"context"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -38,9 +42,42 @@ type SandboxMount struct {
 // MCPToolEntry is one entry in a deployment's tools.mcp list. TA02 checks URL
 // for SSRF-risk targets that bypass declared validation.
 type MCPToolEntry struct {
-	URL              string
-	ValidatesPrivate bool // true if the entry declares SSRF validation on private/loopback targets
-	Location         Location
+	URL string
+
+	// ValidatesPrivate is true if the entry declares that an SSRF validator
+	// ran against this URL at all. As of the DNS-rebinding discussion on
+	// goclaw#1070 (@m13v, @linkdao), this alone is no longer sufficient for
+	// TA02 to treat a private-target tool as safe — see PinsResolvedIP.
+	ValidatesPrivate bool
+
+	// PinsResolvedIP is true if the declared validator resolves the
+	// hostname ONCE and pins the resulting IP for the actual outbound
+	// connection, rather than trusting the hostname again at connect time.
+	// Without pinning, an attacker who controls DNS for an
+	// already-validated hostname can flip the A record after validation
+	// and still reach a private/metadata target — DNS rebinding / TOCTOU.
+	PinsResolvedIP bool
+
+	// ExplicitlyAllowedHost is true if this tool's host is explicitly
+	// allowlisted for local/private use — either declared directly in
+	// TenantGuard's own YAML (tools.mcp[].allowed_private_host), or
+	// auto-enriched by CollectFromGoclawEnv from goclaw's real
+	// GOCLAW_MCP_ALLOWED_HOSTS env var (goclaw#1248). This is the "Option A"
+	// escape hatch requested directly in the goclaw#1070 issue thread.
+	ExplicitlyAllowedHost bool
+
+	// ResolvedIPs is the best-effort result of resolving URL's hostname to
+	// IP address(es) ONCE at collection time — never at scan/rego-eval
+	// time, so a scan stays deterministic and offline-safe once collection
+	// has finished. Empty if the URL already embeds a literal IP that
+	// doesn't need resolving, or if resolution failed; a failure never
+	// fails the whole scan, it only adds a CollectedConfig.Warnings entry.
+	// This is what lets TA02 catch a hostname like host.docker.internal —
+	// the exact repro in goclaw#1070 — which resolves to a private IP but
+	// has no private-looking substring in the URL text itself.
+	ResolvedIPs []string
+
+	Location Location
 }
 
 // AgentEntry is one declared agent, scoped to a tenant. TA03 cross-references
@@ -95,9 +132,11 @@ type CollectedConfig struct {
 	Agents           []AgentEntry
 	ExecTools        []ExecToolEntry
 	// Warnings holds one message per config file containing a field this
-	// collector doesn't recognize (e.g. a newer goclaw schema). These are
-	// schema-level checks, not version-gated — the scan proceeds rather than
-	// blocking, but the warning is surfaced, never silently dropped.
+	// collector doesn't recognize (e.g. a newer goclaw schema), plus any
+	// per-entry best-effort enrichment failure (e.g. an MCP tool hostname
+	// that could not be resolved). These are non-fatal — the scan proceeds
+	// rather than blocking, but the warning is surfaced, never silently
+	// dropped.
 	Warnings []string
 }
 
@@ -111,8 +150,10 @@ type rawDeploymentFile struct {
 	} `yaml:"sandbox"`
 	Tools struct {
 		MCP []struct {
-			URL              string `yaml:"url"`
-			ValidatesPrivate bool   `yaml:"validates_private"`
+			URL                string `yaml:"url"`
+			ValidatesPrivate   bool   `yaml:"validates_private"`
+			PinsResolvedIP     bool   `yaml:"pins_resolved_ip"`
+			AllowedPrivateHost bool   `yaml:"allowed_private_host"`
 		} `yaml:"mcp"`
 		Exec []struct {
 			Name      string `yaml:"name"`
@@ -216,9 +257,12 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 	}
 	for i, m := range raw.Tools.MCP {
 		cfg.MCPTools = append(cfg.MCPTools, MCPToolEntry{
-			URL:              m.URL,
-			ValidatesPrivate: m.ValidatesPrivate,
-			Location:         Location{File: path, Line: lines.lookup("tools.mcp", i)},
+			URL:                   m.URL,
+			ValidatesPrivate:      m.ValidatesPrivate,
+			PinsResolvedIP:        m.PinsResolvedIP,
+			ExplicitlyAllowedHost: m.AllowedPrivateHost,
+			ResolvedIPs:           resolveMCPHost(cfg, path, m.URL),
+			Location:              Location{File: path, Line: lines.lookup("tools.mcp", i)},
 		})
 	}
 	for i, e := range raw.Tools.Exec {
@@ -254,5 +298,80 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 		})
 	}
 
+	return nil
+}
+
+// LookupHost resolves an MCP tool URL's hostname to its IP address(es) at
+// collection time. It is a package-level var — not a direct call to
+// net.LookupHost — purely so tests can substitute a deterministic fake
+// resolver instead of depending on live DNS (see the host.docker.internal
+// goclaw#1070 repro exercised in the test suite). Bounded to a short
+// timeout so a single unresolvable hostname can't hang an entire scan.
+var LookupHost = func(host string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	return net.DefaultResolver.LookupHost(ctx, host)
+}
+
+// resolveMCPHost extracts rawURL's hostname and resolves it via LookupHost,
+// once, at collection time — see MCPToolEntry.ResolvedIPs. A literal IP in
+// rawURL (e.g. http://127.0.0.1/...) resolves immediately with no network
+// call, since Go's resolver short-circuits IP literals. Resolution failure
+// is reported as a warning, never a fatal collection error: a deployment's
+// MCP tool config should still be collectible even if this machine
+// currently can't reach DNS for one of its hosts.
+func resolveMCPHost(cfg *CollectedConfig, path, rawURL string) []string {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Hostname() == "" {
+		return nil
+	}
+	ips, err := LookupHost(u.Hostname())
+	if err != nil {
+		cfg.Warnings = append(cfg.Warnings, fmt.Sprintf("%s: could not resolve MCP tool hostname %q: %v", path, u.Hostname(), err))
+		return nil
+	}
+	return ips
+}
+
+// CollectFromGoclawEnv is an additive, best-effort enrichment step run
+// separately from Collect() — never wired into it automatically, so the
+// existing YAML-only collection path keeps working exactly as-is for
+// backward compatibility. It reads goclaw's own GOCLAW_MCP_ALLOWED_HOSTS
+// environment variable — a comma-separated list of hostnames goclaw's real
+// gateway config wires into mcp.SetAllowedHosts, see goclaw PR #1248 — and
+// flips ExplicitlyAllowedHost to true on any already-collected MCPToolEntry
+// whose URL hostname appears in that list (case-insensitive, matching PR
+// #1248's own trim+lowercase normalization). This lets TA02 recognize a
+// real goclaw deployment's actual opt-in allowlist instead of relying
+// solely on TenantGuard's own bespoke YAML schema, closing the "raw capture
+// needing interpretation" gap called out for goclaw#1248.
+//
+// A live read of goclaw's DB-backed MCP server registration table is out of
+// scope for this pass — it needs a running goclaw instance plus a DB
+// driver; this covers the env-var adapter only.
+func CollectFromGoclawEnv(cfg *CollectedConfig) error {
+	raw := strings.TrimSpace(os.Getenv("GOCLAW_MCP_ALLOWED_HOSTS"))
+	if raw == "" {
+		return nil
+	}
+	allowed := map[string]bool{}
+	for _, h := range strings.Split(raw, ",") {
+		h = strings.ToLower(strings.TrimSpace(h))
+		if h != "" {
+			allowed[h] = true
+		}
+	}
+	if len(allowed) == 0 {
+		return nil
+	}
+	for i, m := range cfg.MCPTools {
+		u, err := url.Parse(m.URL)
+		if err != nil {
+			continue
+		}
+		if host := strings.ToLower(u.Hostname()); host != "" && allowed[host] {
+			cfg.MCPTools[i].ExplicitlyAllowedHost = true
+		}
+	}
 	return nil
 }

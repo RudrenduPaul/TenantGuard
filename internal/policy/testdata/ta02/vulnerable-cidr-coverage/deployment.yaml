@@ -1,0 +1,25 @@
+# TA02 vulnerable fixture — literal private/reserved-range IPs that the OLD
+# 5-string prefix list did NOT cover, confirming TA02's CIDR coverage now
+# matches goclaw's own real SSRF blocklist (goclaw#1269, and the linkdao
+# comment on goclaw#1070 quoting goclaw's actual blockedCIDRs list). All 9
+# entries below should FAIL: none declares validates_private.
+tools:
+  mcp:
+    - url: http://172.16.5.5:9000/tools    # RFC1918 middle third
+      validates_private: false
+    - url: http://100.64.0.5:9000/tools    # CGN, RFC 6598
+      validates_private: false
+    - url: http://198.18.0.5:9000/tools    # RFC 2544 benchmarking (goclaw#1269)
+      validates_private: false
+    - url: http://240.0.0.5:9000/tools     # reserved
+      validates_private: false
+    - url: http://224.0.0.5:9000/tools     # IPv4 multicast
+      validates_private: false
+    - url: http://[::1]:9000/tools         # IPv6 loopback
+      validates_private: false
+    - url: http://[fe80::1]:9000/tools     # IPv6 link-local
+      validates_private: false
+    - url: http://[fc00::1]:9000/tools     # IPv6 unique local
+      validates_private: false
+    - url: http://[ff00::1]:9000/tools     # IPv6 multicast
+      validates_private: false

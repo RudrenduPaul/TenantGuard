@@ -1,8 +1,12 @@
-# TA02 clean fixture — a public URL needs no validation flag, and a private
-# target that does declare validation is compliant.
+# TA02 clean fixture — a public URL needs no validation flag. A private
+# target is only compliant if it declares BOTH validates_private AND
+# pins_resolved_ip: true — a bare validates_private: true is no longer
+# enough on its own, since an unpinned validator is vulnerable to
+# DNS-rebinding/TOCTOU (see goclaw#1070, @m13v and @linkdao's comments).
 tools:
   mcp:
     - url: https://api.example.com/tools
       validates_private: false
     - url: http://127.0.0.1:9000/tools
       validates_private: true
+      pins_resolved_ip: true

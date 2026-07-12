@@ -42,7 +42,7 @@ var ruleMetadata = map[string]ruleMeta{
 	},
 	"TA02": {
 		id:          "TA02",
-		description: "MCP tool URL targets a private/loopback address without declared SSRF validation",
+		description: "MCP tool URL targets a private/loopback/reserved address (via real CIDR containment on a literal or DNS-resolved IP) without a verified, IP-pinned SSRF validator or an explicit host allowlist entry",
 		mapsToIssue: "goclaw#1070",
 	},
 	"TA03": {
