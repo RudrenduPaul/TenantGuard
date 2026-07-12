@@ -1,0 +1,7 @@
+# TA04 clean fixture — both direct and indirect env-read paths are denied.
+tools:
+  exec:
+    - name: shell-exec
+      env_policy:
+        deny_direct_env_dump: true
+        deny_indirect_env_read: true

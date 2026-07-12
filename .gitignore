@@ -1,0 +1,5 @@
+/tenantguard
+/dist/
+*.sarif
+.DS_Store
+/tmp/

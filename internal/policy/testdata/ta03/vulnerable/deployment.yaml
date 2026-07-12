@@ -1,0 +1,12 @@
+# TA03 vulnerable fixture — reproduces goclaw#1217 (cross-tenant cron binding)
+# and the dangling-reference edge case (a target_agent that doesn't exist at
+# all) — both are fail-closed violations per the design doc's edge-case table.
+schedules:
+  cron:
+    - tenant: tenant-a
+      target_agent: research-agent-tenant-b # cross-tenant: agent belongs to tenant-b
+    - tenant: tenant-a
+      target_agent: does-not-exist # dangling: no agent with this name anywhere
+agents:
+  - name: research-agent-tenant-b
+    tenant: tenant-b

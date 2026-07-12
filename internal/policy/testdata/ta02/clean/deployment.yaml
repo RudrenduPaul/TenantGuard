@@ -1,0 +1,8 @@
+# TA02 clean fixture — a public URL needs no validation flag, and a private
+# target that does declare validation is compliant.
+tools:
+  mcp:
+    - url: https://api.example.com/tools
+      validates_private: false
+    - url: http://127.0.0.1:9000/tools
+      validates_private: true

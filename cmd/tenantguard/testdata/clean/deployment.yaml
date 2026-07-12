@@ -1,0 +1,24 @@
+# A fully compliant deployment, passing all 5 TA0N checks — used by
+# TestCleanTargetExitsZero.
+sandbox:
+  mounts:
+    - path: /shared/${TENANT_ID}/workspace
+tools:
+  mcp:
+    - url: https://api.example.com/tools
+      validates_private: false
+  exec:
+    - name: shell-exec
+      env_policy:
+        deny_direct_env_dump: true
+        deny_indirect_env_read: true
+      approvals:
+        - basename: python3
+          path_scoped: true
+schedules:
+  cron:
+    - tenant: tenant-a
+      target_agent: research-agent-a
+agents:
+  - name: research-agent-a
+    tenant: tenant-a

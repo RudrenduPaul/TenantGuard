@@ -1,0 +1,9 @@
+# TA03 clean fixture — the cron binding's target agent belongs to the same
+# tenant that declared the binding.
+schedules:
+  cron:
+    - tenant: tenant-a
+      target_agent: research-agent-a
+agents:
+  - name: research-agent-a
+    tenant: tenant-a
