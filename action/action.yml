@@ -1,7 +1,7 @@
 name: "TenantGuard Scan"
 description: >-
   Scan a self-hosted multi-tenant AI-agent deployment's configuration for
-  tenant-isolation defects (TA01-TA05) and upload the results as a SARIF
+  tenant-isolation defects (TA01-TA05, TA10) and upload the results as a SARIF
   code-scanning report.
 branding:
   icon: "shield"

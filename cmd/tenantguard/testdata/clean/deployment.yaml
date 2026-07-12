@@ -1,4 +1,4 @@
-# A fully compliant deployment, passing all 5 TA0N checks — used by
+# A fully compliant deployment, passing all 6 TA0N checks — used by
 # TestCleanTargetExitsZero.
 sandbox:
   mounts:
@@ -22,3 +22,7 @@ schedules:
 agents:
   - name: research-agent-a
     tenant: tenant-a
+    overrides:
+      workspace_restriction: true
+      sandbox_config:
+        cpu_limit: "1"

@@ -28,8 +28,10 @@ type regoCron struct {
 }
 
 type regoAgent struct {
-	Name   string `json:"name"`
-	Tenant string `json:"tenant"`
+	Name                            string `json:"name"`
+	Tenant                          string `json:"tenant"`
+	HasWorkspaceRestrictionOverride bool   `json:"has_workspace_restriction_override"`
+	HasSandboxConfigOverride        bool   `json:"has_sandbox_config_override"`
 }
 
 type regoApproval struct {
@@ -58,7 +60,12 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 		out.CronSchedules = append(out.CronSchedules, regoCron{Tenant: c.Tenant, TargetAgent: c.TargetAgent})
 	}
 	for _, a := range cfg.Agents {
-		out.Agents = append(out.Agents, regoAgent{Name: a.Name, Tenant: a.Tenant})
+		out.Agents = append(out.Agents, regoAgent{
+			Name:                            a.Name,
+			Tenant:                          a.Tenant,
+			HasWorkspaceRestrictionOverride: a.HasWorkspaceRestrictionOverride,
+			HasSandboxConfigOverride:        a.HasSandboxConfigOverride,
+		})
 	}
 	for _, e := range cfg.ExecTools {
 		re := regoExec{Name: e.Name}
