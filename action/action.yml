@@ -23,18 +23,26 @@ inputs:
     description: "Fail the workflow step if findings are present (true/false)"
     required: false
     default: "true"
+  version:
+    description: >-
+      tenantguard version to install (a git tag, e.g. "v0.1.0"). Defaults to
+      "latest", which tracks whatever this repo's newest tag is at the time
+      your workflow runs — pin this to a specific tag in your own workflow
+      for reproducible builds, the same way you'd pin any other Action.
+    required: false
+    default: "latest"
 
 runs:
   using: "composite"
   steps:
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
       with:
         go-version: "1.26"
 
     - name: Install tenantguard
       shell: bash
-      run: go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@latest
+      run: go install "github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@${{ inputs.version }}"
 
     - name: Run scan
       id: scan
@@ -53,7 +61,7 @@ runs:
 
     - name: Upload SARIF
       if: ${{ inputs.upload-sarif == 'true' }}
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # v3
       with:
         sarif_file: tenantguard-report.sarif
 
