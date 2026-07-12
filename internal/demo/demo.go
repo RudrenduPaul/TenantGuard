@@ -1,5 +1,5 @@
 // Package demo bundles a single synthetic deployment config combining one
-// violation of each TA01-TA05 rule, so `tenantguard scan --demo` reaches a
+// violation of each TA01-TA06 rule, so `tenantguard scan --demo` reaches a
 // real, HIPAA-cited finding with zero setup.
 package demo
 
