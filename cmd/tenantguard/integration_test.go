@@ -36,7 +36,7 @@ func TestEndToEndBinary(t *testing.T) {
 	if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() != exitFindings {
 		t.Errorf("exit code = %d, want %d (exitFindings)", exitErr.ExitCode(), exitFindings)
 	}
-	for _, rule := range []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA09"} {
+	for _, rule := range []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA09", "TA10"} {
 		if !strings.Contains(string(termOut), rule) {
 			t.Errorf("expected %s to appear in terminal output, got:\n%s", rule, termOut)
 		}
@@ -64,7 +64,7 @@ func TestEndToEndBinary(t *testing.T) {
 		t.Fatalf("expected 1 SARIF run, got %d", len(runs))
 	}
 	results, _ := runs[0].(map[string]interface{})["results"].([]interface{})
-	if len(results) != 6 {
-		t.Errorf("expected 6 SARIF results (one per violated rule), got %d", len(results))
+	if len(results) != 7 {
+		t.Errorf("expected 7 SARIF results (one per violated rule: TA01-05, TA09, TA10 -- TA08 declares no providers in the demo fixture so contributes none), got %d", len(results))
 	}
 }

@@ -1,6 +1,7 @@
 # Bundled demo deployment for `tenantguard scan --demo` — a synthetic config
 # combining one violation of each TA01-TA05 rule, plus TA09 (sandbox.
-# on_unavailable is never declared below), so a first-time user gets a real,
+# on_unavailable is never declared below) and TA10 (the agent below
+# declares no per-agent overrides), so a first-time user gets a real,
 # HIPAA-cited finding within seconds, with zero setup. Reused directly from
 # the same fixture pattern built for TA0N unit tests; this is not new
 # content authored just for the demo.
@@ -31,3 +32,6 @@ schedules:
 agents:
   - name: research-agent-tenant-b
     tenant: tenant-b
+    # FAIL (TA10): no overrides declared for workspace_restriction or
+    # sandbox_config, so this agent silently inherits an undeclared global
+    # default instead of an explicit per-agent value.

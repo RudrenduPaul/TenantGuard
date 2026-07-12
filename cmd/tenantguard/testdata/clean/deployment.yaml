@@ -23,3 +23,7 @@ schedules:
 agents:
   - name: research-agent-a
     tenant: tenant-a
+    overrides:
+      workspace_restriction: true
+      sandbox_config:
+        cpu_limit: "1"
