@@ -17,11 +17,10 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.26"
+      - name: Install golangci-lint v2.12.2 (built from source against the active Go toolchain)
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6
-        with:
-          version: v2.12.2
-          install-mode: goinstall
+        run: golangci-lint run
 
   test:
     runs-on: ubuntu-latest
