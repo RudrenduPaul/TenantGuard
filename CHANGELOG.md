@@ -20,3 +20,9 @@ All notable changes to this project are documented here.
 - GitHub Action wrapper (`action/`) for CI-triggered scans with SARIF upload.
 - Distribution via Homebrew tap, `go install`, and GitHub Releases (GoReleaser,
   cross-platform, sigstore-signed, with an SBOM attached).
+- TA10: best-effort per-agent config-override declaration completeness check —
+  flags agents whose YAML entry doesn't explicitly declare a
+  `workspace_restriction` or `sandbox_config` override. A static-config proxy
+  for the runtime bug fixed in `goclaw` PR #145 (per-agent DB settings
+  silently ignored because tool config was baked in at process startup); it
+  cannot detect that Go-level bug itself, only under-specified config.

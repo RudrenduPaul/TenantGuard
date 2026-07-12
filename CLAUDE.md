@@ -119,7 +119,7 @@ These override default behavior in every session:
 | `cmd/tenantguard/main.go` | CLI entry point -- `scan`, `--target`, `--demo`, `--format`, `--control`, `--sarif-out` flags; exit codes 0/1/2 |
 | `internal/collector/config.go` | Walks a target directory, merges every `*.yml`/`*.yaml` into one `CollectedConfig`, fails loudly on malformed input |
 | `internal/collector/lineindex.go` | Resolves exact source line numbers for every collected entry, so findings cite `file:line` |
-| `internal/policy/rego/ta01.rego` .. `ta05.rego` | The five tenant-isolation rules, each mapped 1:1 to a confirmed `goclaw` issue |
+| `internal/policy/rego/ta01.rego` .. `ta05.rego`, `ta10.rego` | The five tenant-isolation rules mapped 1:1 to a confirmed `goclaw` issue, plus TA10, a best-effort per-agent config-override proxy mapped to merged `goclaw` PR #145 |
 | `internal/policy/policy.go` | Embeds and prepares the Rego policies, evaluates them against a `CollectedConfig`, converts results to `[]Finding` |
 | `internal/policy/testdata/ta0N/{vulnerable,clean}/` | Labeled fixtures per rule -- source of every detection-rate claim |
 | `internal/compliance/hipaa.go` | HIPAA Sec164.312 control-mapping metadata (provisional, v0.1 only) |

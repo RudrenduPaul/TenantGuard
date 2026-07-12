@@ -71,4 +71,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "sandbox fail-closed posture not declared (sandbox.on_unavailable must be \"fail_closed\")",
 		mapsToIssue: "goclaw#246",
 	},
+	"TA10": {
+		id:          "TA10",
+		description: "agent does not explicitly declare a per-agent config override (workspace restriction or sandbox config), risking silent inheritance of an undeclared global default",
+		mapsToIssue: "goclaw#145",
+	},
 }
