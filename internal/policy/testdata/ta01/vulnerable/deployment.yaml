@@ -1,0 +1,5 @@
+# TA01 vulnerable fixture — reproduces goclaw#1163: a sandbox workspace mount
+# shared across tenants, no ${TENANT_ID} scoping placeholder.
+sandbox:
+  mounts:
+    - path: /shared/workspace

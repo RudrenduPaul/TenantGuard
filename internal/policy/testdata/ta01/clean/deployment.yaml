@@ -1,0 +1,4 @@
+# TA01 clean fixture — the workspace mount is scoped per tenant.
+sandbox:
+  mounts:
+    - path: /shared/${TENANT_ID}/workspace

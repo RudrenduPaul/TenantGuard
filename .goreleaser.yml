@@ -1,0 +1,69 @@
+version: 2
+
+project_name: tenantguard
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: tenantguard
+    main: ./cmd/tenantguard
+    binary: tenantguard
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: tenantguard-archive
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: "checksums.txt"
+
+sboms:
+  - artifacts: archive
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--yes"
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+    artifacts: checksum
+
+brews:
+  - name: tenantguard
+    repository:
+      owner: RudrenduPaul
+      name: homebrew-tap
+    directory: Formula
+    homepage: "https://github.com/RudrenduPaul/TenantGuard"
+    description: "Tenant-isolation security-audit CLI for self-hosted multi-tenant AI-agent platforms"
+    license: "Apache-2.0"
+    test: |
+      system "#{bin}/tenantguard scan --demo || true"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

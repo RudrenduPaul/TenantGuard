@@ -1,0 +1,7 @@
+# TA05 clean fixture — the approval is scoped to a specific full path.
+tools:
+  exec:
+    - name: shell-exec
+      approvals:
+        - basename: python3
+          path_scoped: true

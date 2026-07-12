@@ -1,0 +1,4 @@
+sandbox:
+  mounts:
+    - path: /shared/workspace
+  this is not: [valid yaml because the bracket never closes
