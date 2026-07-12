@@ -60,4 +60,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "exec-approval allow-always entry is keyed on basename only, not a full path scope",
 		mapsToIssue: "goclaw#1216",
 	},
+	"TA12": {
+		id:          "TA12",
+		description: "deployment does not guarantee owner/sysadmin recovery access (no owner_ids declared and/or no recovery command declared)",
+		mapsToIssue: "goclaw#954",
+	},
 }

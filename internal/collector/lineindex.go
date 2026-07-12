@@ -48,6 +48,26 @@ func (li lineIndexer) lookup(path string, itemIndex int) int {
 	return node.Content[itemIndex].Line
 }
 
+// lookupKey returns the source line of the value found by walking path from
+// the document root. Unlike lookup, this works for any node kind (mapping,
+// scalar, or sequence) rather than requiring a sequence node plus an item
+// index — used for singleton sections like owner: that aren't a list of
+// entries. Returns 0 (unknown) if the path can't be resolved, same
+// unknown-line convention as lookup.
+func (li lineIndexer) lookupKey(path string) int {
+	if li.root == nil || len(li.root.Content) == 0 {
+		return 0
+	}
+	node := li.root.Content[0]
+	for _, part := range strings.Split(path, ".") {
+		node = mapValue(node, part)
+		if node == nil {
+			return 0
+		}
+	}
+	return node.Line
+}
+
 // mapValue returns the value node for key in a yaml mapping node, or nil if
 // node isn't a mapping or the key isn't present.
 func mapValue(node *yaml.Node, key string) *yaml.Node {
