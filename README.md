@@ -11,7 +11,7 @@ Drift, a different AI agent platform, shut down in March 2026 after an OAuth bre
 
 goclaw, a genuinely useful self-hosted multi-tenant agent platform with more than 3,400 stars, has five open, confirmed issues that describe the same failure mode in miniature: a sandbox workspace mount that isn't scoped per tenant, a cross-agent authorization gap that lets a scheduled job reach a foreign tenant's agent, an exec tool that can leak environment secrets through an indirect path, an approval bypass keyed on a filename instead of a real path scope, and an SSRF validation mismatch on saved tool URLs. All five were still open the day this tool was written. None of them have accumulated much visible reaction yet, most were filed within the last few months, but each one is real, reproducible, and unfixed.
 
-tenantguard checks for exactly these five patterns, and the broader category of tenant-isolation defect they represent, in any self-hosted multi-tenant agent deployment, not just goclaw.
+tenantguard checks for these five patterns, the broader category of tenant-isolation defect they represent, and a sixth best-effort check for under-specified per-agent config overrides, in any self-hosted multi-tenant agent deployment, not just goclaw.
 
 ## What it does
 
@@ -29,9 +29,9 @@ Every finding names the exact config field at fault, the upstream issue it repro
 
     tenantguard scan --demo
 
-`--demo` runs the same five checks against a bundled synthetic deployment (reusing the exact fixtures the test suite is built on) so you can see a real finding, with a real file:line and a real HIPAA citation, without needing your own goclaw deployment on hand first.
+`--demo` runs the same six checks against a bundled synthetic deployment (reusing the exact fixtures the test suite is built on) so you can see a real finding, with a real file:line and a real HIPAA citation, without needing your own goclaw deployment on hand first.
 
-## The five checks
+## The six checks
 
 | Rule | What it catches | Maps to |
 |---|---|---|
@@ -40,12 +40,13 @@ Every finding names the exact config field at fault, the upstream issue it repro
 | TA03 | A scheduled job's target agent belongs to a different tenant, or doesn't exist at all | `goclaw#1217` |
 | TA04 | An exec tool denies direct env-dump reads but not indirect ones (e.g. a shell running `jq $ENV`) | `goclaw#1227` |
 | TA05 | An exec-approval "allow-always" entry is keyed on basename only, not a full path | `goclaw#1216` |
+| TA10 | An agent doesn't explicitly declare a per-agent config override (workspace restriction or sandbox config), risking silent inheritance of an undeclared global default | `goclaw#145` (best-effort static proxy, not a runtime check) |
 
 Every rule has a labeled vulnerable fixture and a labeled clean fixture in `internal/policy/testdata/`, so the detection claim above is reproducible: `go test ./internal/policy/... -v`.
 
 ## How it's different from general IaC/config scanners
 
-**Trivy** and **Conftest** are both excellent, general-purpose tools we build directly on top of the same ideas, Conftest in particular runs on the identical OPA/Rego engine tenantguard embeds. Neither ships a rule pack for self-hosted multi-tenant AI-agent platforms; you'd write all five of these checks from scratch yourself.
+**Trivy** and **Conftest** are both excellent, general-purpose tools we build directly on top of the same ideas, Conftest in particular runs on the identical OPA/Rego engine tenantguard embeds. Neither ships a rule pack for self-hosted multi-tenant AI-agent platforms; you'd write all six of these checks from scratch yourself.
 
 **Checkov** already ships built-in HIPAA-mapped policies, and does it well, but for cloud infrastructure resources (VPCs, S3 buckets, IAM roles), not for AI-agent tenant-isolation defects. Its compliance mapping doesn't cover this problem at all today.
 
@@ -53,7 +54,7 @@ tenantguard's whole reason to exist is the narrow overlap those tools don't cove
 
 | | tenantguard | Trivy | Conftest | Checkov |
 |---|---|---|---|---|
-| Built-in tenant-isolation rules for AI-agent platforms | 5 | 0 | 0 | 0 |
+| Built-in tenant-isolation rules for AI-agent platforms | 6 | 0 | 0 | 0 |
 | HIPAA-mapped findings, this problem | Yes (provisional) | No | No | No |
 | HIPAA-mapped findings, cloud IaC | No | No | No | Yes |
 | Distribution | single static binary | single static binary | single static binary | Python package |
@@ -69,7 +70,7 @@ Sources: [Trivy docs](https://trivy.dev/docs/latest/getting-started/), [Conftest
 - **Binary:** ~31MB, statically linked, no runtime dependency beyond standard OS
   system libraries (verified with `otool -L` / `ldd`). OPA and the SARIF library are
   embedded as Go modules, not separate tools you install.
-- **Rule coverage:** every one of the 5 rules has both a true-positive and a
+- **Rule coverage:** every one of the 6 rules has both a true-positive and a
   true-negative test against a real fixture (`go test ./internal/policy/... -v`).
   Reproduce it yourself, don't take our word for it.
 

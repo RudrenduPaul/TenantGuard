@@ -1,0 +1,8 @@
+# TA10 vulnerable fixture — a config-layer proxy for goclaw#145 (per-agent DB
+# settings silently ignored at runtime because config was baked in at
+# startup): this agent declares neither a workspace_restriction nor a
+# sandbox_config override, so it silently inherits an undeclared global
+# default instead of an explicit per-agent value.
+agents:
+  - name: research-agent-a
+    tenant: tenant-a

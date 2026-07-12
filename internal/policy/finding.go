@@ -60,4 +60,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "exec-approval allow-always entry is keyed on basename only, not a full path scope",
 		mapsToIssue: "goclaw#1216",
 	},
+	"TA10": {
+		id:          "TA10",
+		description: "agent does not explicitly declare a per-agent config override (workspace restriction or sandbox config), risking silent inheritance of an undeclared global default",
+		mapsToIssue: "goclaw#145",
+	},
 }
