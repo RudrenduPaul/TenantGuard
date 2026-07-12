@@ -42,6 +42,7 @@ type regoExec struct {
 	EnvPolicy struct {
 		DenyDirectEnvDump   bool `json:"deny_direct_env_dump"`
 		DenyIndirectEnvRead bool `json:"deny_indirect_env_read"`
+		AllowChainExec      bool `json:"allow_chain_exec"`
 	} `json:"env_policy"`
 	Approvals []regoApproval `json:"approvals"`
 }
@@ -64,6 +65,7 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 		re := regoExec{Name: e.Name}
 		re.EnvPolicy.DenyDirectEnvDump = e.EnvPolicy.DenyDirectEnvDump
 		re.EnvPolicy.DenyIndirectEnvRead = e.EnvPolicy.DenyIndirectEnvRead
+		re.EnvPolicy.AllowChainExec = e.EnvPolicy.AllowChainExec
 		for _, a := range e.Approvals {
 			re.Approvals = append(re.Approvals, regoApproval{Basename: a.Basename, PathScoped: a.PathScoped})
 		}
