@@ -52,11 +52,14 @@ type AgentEntry struct {
 }
 
 // CronBinding is one scheduled job. TA03 checks that TargetAgent belongs to
-// the same Tenant that declared the binding.
+// the same Tenant that declared the binding. TA06 checks CreatorCaptured --
+// whether the store layer captures the human creator's sender/role identity
+// at cron-create time so it can be replayed at fire time (see goclaw#1129).
 type CronBinding struct {
-	Tenant      string
-	TargetAgent string
-	Location    Location
+	Tenant          string
+	TargetAgent     string
+	CreatorCaptured bool
+	Location        Location
 }
 
 // ExecToolEntry is one entry in a deployment's tools.exec list. TA04 checks
@@ -128,8 +131,9 @@ type rawDeploymentFile struct {
 	} `yaml:"tools"`
 	Schedules struct {
 		Cron []struct {
-			Tenant      string `yaml:"tenant"`
-			TargetAgent string `yaml:"target_agent"`
+			Tenant                  string `yaml:"tenant"`
+			TargetAgent             string `yaml:"target_agent"`
+			CapturesCreatorIdentity bool   `yaml:"captures_creator_identity"`
 		} `yaml:"cron"`
 	} `yaml:"schedules"`
 	Agents []struct {
@@ -241,9 +245,10 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 	}
 	for i, c := range raw.Schedules.Cron {
 		cfg.CronSchedules = append(cfg.CronSchedules, CronBinding{
-			Tenant:      c.Tenant,
-			TargetAgent: c.TargetAgent,
-			Location:    Location{File: path, Line: lines.lookup("schedules.cron", i)},
+			Tenant:          c.Tenant,
+			TargetAgent:     c.TargetAgent,
+			CreatorCaptured: c.CapturesCreatorIdentity,
+			Location:        Location{File: path, Line: lines.lookup("schedules.cron", i)},
 		})
 	}
 	for i, a := range raw.Agents {
