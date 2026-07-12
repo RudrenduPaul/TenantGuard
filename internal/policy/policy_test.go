@@ -88,6 +88,21 @@ func TestTA04(t *testing.T) {
 	}
 }
 
+// TestTA04_AllowChainExec covers goclaw#1033: an exec tool with
+// allow_chain_exec: true leaks credential env vars to every command in a
+// shell operator chain, even when the direct/indirect env-dump denylist is
+// otherwise fully set.
+func TestTA04_AllowChainExec(t *testing.T) {
+	vuln := scanFixture(t, "testdata/ta04/vulnerable-chain-exec", "TA04")
+	if countStatus(vuln, policy.StatusFail) == 0 {
+		t.Errorf("expected at least one TA04 FAIL on the vulnerable-chain-exec fixture, got %+v", vuln)
+	}
+	clean := scanFixture(t, "testdata/ta04/clean-chain-exec", "TA04")
+	if countStatus(clean, policy.StatusFail) != 0 {
+		t.Errorf("expected zero TA04 FAILs on the clean-chain-exec fixture, got %+v", clean)
+	}
+}
+
 func TestTA05(t *testing.T) {
 	vuln := scanFixture(t, "testdata/ta05/vulnerable", "TA05")
 	if countStatus(vuln, policy.StatusFail) == 0 {
