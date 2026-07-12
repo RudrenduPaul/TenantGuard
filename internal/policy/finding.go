@@ -42,7 +42,7 @@ var ruleMetadata = map[string]ruleMeta{
 	},
 	"TA02": {
 		id:          "TA02",
-		description: "MCP tool URL targets a private/loopback/reserved address (via real CIDR containment on a literal or DNS-resolved IP) without a verified, IP-pinned SSRF validator or an explicit host allowlist entry",
+		description: "MCP tool URL targets a private/loopback/reserved address (via real CIDR containment on a literal or DNS-resolved IP) without a verified, IP-pinned SSRF validator or an explicit host allowlist entry. CAVEAT: a PASS trusts the deployment's own pins_resolved_ip/validates_private declaration -- TenantGuard cannot verify the real validator actually pins the resolved IP for the connection itself, so DNS-rebinding/TOCTOU risk persists if that declaration is inaccurate",
 		mapsToIssue: "goclaw#1070",
 	},
 	"TA03": {
