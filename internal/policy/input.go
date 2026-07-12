@@ -6,11 +6,12 @@ import "github.com/RudrenduPaul/TenantGuard/internal/collector"
 // excludes collector.Location — Rego only needs to identify *which* array
 // index is a violation; Go maps that index back to a Location afterward.
 type regoInput struct {
-	Sandboxes     []regoSandbox `json:"sandboxes"`
-	MCPTools      []regoMCPTool `json:"mcp_tools"`
-	CronSchedules []regoCron    `json:"cron_schedules"`
-	Agents        []regoAgent   `json:"agents"`
-	ExecTools     []regoExec    `json:"exec_tools"`
+	Sandboxes     []regoSandbox  `json:"sandboxes"`
+	MCPTools      []regoMCPTool  `json:"mcp_tools"`
+	CronSchedules []regoCron     `json:"cron_schedules"`
+	Agents        []regoAgent    `json:"agents"`
+	ExecTools     []regoExec     `json:"exec_tools"`
+	Providers     []regoProvider `json:"providers"`
 }
 
 type regoSandbox struct {
@@ -35,6 +36,11 @@ type regoAgent struct {
 type regoApproval struct {
 	Basename   string `json:"basename"`
 	PathScoped bool   `json:"path_scoped"`
+}
+
+type regoProvider struct {
+	Name                        string `json:"name"`
+	OAuthTokenStorageEncryption string `json:"oauth_token_storage_encryption"`
 }
 
 type regoExec struct {
@@ -68,6 +74,9 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 			re.Approvals = append(re.Approvals, regoApproval{Basename: a.Basename, PathScoped: a.PathScoped})
 		}
 		out.ExecTools = append(out.ExecTools, re)
+	}
+	for _, p := range cfg.Providers {
+		out.Providers = append(out.Providers, regoProvider{Name: p.Name, OAuthTokenStorageEncryption: p.OAuthTokenStorageEncryption})
 	}
 	return out
 }

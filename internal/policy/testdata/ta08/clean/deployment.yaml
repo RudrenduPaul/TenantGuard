@@ -1,0 +1,8 @@
+# TA08 clean fixture — every provider declares AES-256-GCM encryption-at-rest
+# for its stored OAuth/credential tokens, matching goclaw#65's OAuth token
+# storage implementation.
+providers:
+  - name: chatgpt-codex
+    oauth:
+      token_storage:
+        encryption: aes-256-gcm
