@@ -1,0 +1,13 @@
+# TA15 vulnerable fixture — reproduces goclaw#1147: neither channel_instances
+# entry declares reload_strategy: differential, so InstanceLoader.Reload()
+# falls back to its destructive default -- a full stop/restart of every
+# running channel instance on any single create/update/delete, interrupting
+# every other tenant's in-progress conversations.
+channel_instances:
+  - channel: whatsapp
+    tenant: tenant-a
+    device_session_id: sess-tenant-a
+  - channel: slack
+    tenant: tenant-b
+    device_session_id: sess-tenant-b
+    reload_strategy: full

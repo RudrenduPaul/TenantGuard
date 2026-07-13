@@ -2,7 +2,8 @@
 # combining one violation of each TA01-TA05 rule, plus TA06 (cron creator
 # identity), TA07 (sandbox container privilege), TA09 (sandbox.on_unavailable
 # is never declared below), TA10 (the agent below declares no per-agent
-# overrides), and TA11 (a cross-tenant channel-session collision), so a
+# overrides), TA11 (a cross-tenant channel-session collision), and TA15 (no
+# channel instance declares reload_strategy: differential), so a
 # first-time user gets a real, HIPAA-cited finding within seconds, with zero
 # setup. Reused directly from the same fixture pattern built for TA0N unit
 # tests; this is not new content authored just for the demo.
@@ -49,6 +50,7 @@ owner: # PASS (TA12): a real deployment guarantees sysadmin recovery access
   has_recovery_command: true
 
 channel_instances: # FAIL (TA11): both entries share one device_session_id across tenants
+                    # FAIL (TA15): neither entry declares reload_strategy: differential
   - channel: whatsapp
     tenant: tenant-a
     device_session_id: sess-demo-shared

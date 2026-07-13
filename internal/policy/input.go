@@ -86,11 +86,13 @@ type regoExec struct {
 
 // regoChannelInstance is one declared messaging-channel instance. TA11
 // correlates DeviceSessionID across entries to catch cross-tenant identity
-// sharing (goclaw#1064/#1065).
+// sharing (goclaw#1064/#1065). TA15 reads ReloadStrategy to catch the
+// destructive full-reload blast radius (goclaw#1147).
 type regoChannelInstance struct {
 	Channel         string `json:"channel"`
 	Tenant          string `json:"tenant"`
 	DeviceSessionID string `json:"device_session_id"`
+	ReloadStrategy  string `json:"reload_strategy"`
 }
 
 func toRegoInput(cfg *collector.CollectedConfig) regoInput {
@@ -166,7 +168,7 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 	out.HMACEnabled = cfg.Bridge.HMACEnabled
 	out.ContextHeadersSigned = cfg.Bridge.ContextHeadersSigned
 	for _, c := range cfg.ChannelInstances {
-		out.ChannelInstances = append(out.ChannelInstances, regoChannelInstance{Channel: c.Channel, Tenant: c.Tenant, DeviceSessionID: c.DeviceSessionID})
+		out.ChannelInstances = append(out.ChannelInstances, regoChannelInstance{Channel: c.Channel, Tenant: c.Tenant, DeviceSessionID: c.DeviceSessionID, ReloadStrategy: c.ReloadStrategy})
 	}
 	return out
 }
