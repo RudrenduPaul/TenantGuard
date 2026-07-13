@@ -22,6 +22,12 @@ type regoInput struct {
 	HMACEnabled                  bool                  `json:"bridge_hmac_enabled"`
 	ContextHeadersSigned         bool                  `json:"bridge_context_headers_signed"`
 	ResourceProfiles             []regoResourceProfile `json:"resource_profiles"`
+	// BrowserBackendDeclared/BrowserIsolationMode(Declared) back TA14's
+	// deployment-level check -- see collector.BrowserConfig's doc comment
+	// for why this exists alongside the per-index ResourceProfiles list.
+	BrowserBackendDeclared       bool                  `json:"browser_backend_declared"`
+	BrowserIsolationMode         string                `json:"browser_isolation_mode"`
+	BrowserIsolationModeDeclared bool                  `json:"browser_isolation_mode_declared"`
 	ChannelInstances             []regoChannelInstance `json:"channel_instances"`
 }
 
@@ -121,9 +127,18 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 	}
 	out.SandboxOnUnavailable = cfg.SandboxOnUnavailable
 	out.SandboxOnUnavailableDeclared = cfg.SandboxOnUnavailableDeclared
+	// Normalize to an empty (never nil) slice: count(input.resource_profiles)
+	// in ta14.rego's deployment-level check needs a real array, not JSON
+	// null, or count() is undefined and the whole rule silently never fires
+	// -- the same nil-vs-empty-array pitfall the tmpfs_flags/cap_add
+	// normalization above already guards against.
+	out.ResourceProfiles = []regoResourceProfile{}
 	for _, r := range cfg.ResourceProfiles {
 		out.ResourceProfiles = append(out.ResourceProfiles, regoResourceProfile{Path: r.Path})
 	}
+	out.BrowserBackendDeclared = cfg.Browser.BackendDeclared
+	out.BrowserIsolationMode = cfg.Browser.IsolationMode
+	out.BrowserIsolationModeDeclared = cfg.Browser.IsolationModeDeclared
 	for _, m := range cfg.MCPTools {
 		out.MCPTools = append(out.MCPTools, regoMCPTool{
 			URL:                m.URL,

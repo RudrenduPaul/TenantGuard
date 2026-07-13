@@ -1,0 +1,8 @@
+# TA14 vulnerable fixture (deployment-level) -- backend_isolation_mode is
+# declared but the value is neither "scoped_path" nor "stateless" (e.g. a
+# typo). An unrecognized value must FAIL loudly, not be silently treated as
+# an implicit "stateless" skip.
+resources:
+  browser:
+    backend: lightpanda
+    backend_isolation_mode: fully-isolated-trust-me

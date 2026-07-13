@@ -55,12 +55,54 @@ type SandboxMount struct {
 	Location        Location
 }
 
+// BrowserConfig is the deployment-level declaration of which browser/
+// headless-automation backend a deployment uses (Backend) and how it claims
+// to isolate tenants on that backend (IsolationMode). Unlike ResourceProfile
+// (a per-entry list of profile storage paths), both fields are single,
+// deployment-scoped declarations -- TA14 checks them once per scan, not once
+// per profile index.
+//
+// This closes a gap where a backend whose isolation guarantee is
+// architectural rather than path-based (e.g. goclaw#1028's Lightpanda
+// backend, whose author describes isolation as "implicit -- every
+// connection gets a fresh browser") declares zero resources.browser.profiles
+// entries. Before this field existed, that meant TA14 had literally nothing
+// to iterate and silently produced zero findings -- not because isolation
+// had been verified, but because TA14 had no declared fact to check at all.
+// Declaring backend_isolation_mode: stateless gives TenantGuard an explicit
+// claim it can check (and, going forward, a place to grow a real
+// runtime/architectural verification against), instead of a silent
+// pass-by-omission.
+type BrowserConfig struct {
+	// BackendDeclared is true only if some scanned config file actually
+	// declared resources.browser.backend (even as an empty string) --
+	// this is the signal that browser automation is in play at all, which
+	// is what obligates a deployment to also declare IsolationMode.
+	BackendDeclared bool
+	Backend         string
+	// IsolationModeDeclared is true only if some scanned config file
+	// actually declared resources.browser.backend_isolation_mode. A
+	// deployment that declares Backend but never declares this is a TA14
+	// FAIL: an undeclared isolation posture for an in-use browser backend,
+	// not a silent PASS.
+	IsolationModeDeclared bool
+	// IsolationMode is "scoped_path" or "stateless" when declared. Any
+	// other declared value is treated as unrecognized (still FAIL) by
+	// ta14.rego, so a typo can't accidentally short-circuit the check.
+	IsolationMode string
+	Location      Location
+}
+
 // ResourceProfile is one entry in a deployment's resources.browser.profiles
 // list. TA14 checks Path against the same per-tenant scoping convention TA01
 // applies to sandbox mounts, but for browser/container profile storage
 // paths — a resource category goclaw's own tenant-isolation defects (PR
 // nextlevelbuilder/goclaw#778, "cross-agent browser profile isolation fix")
-// show is a genuine gap when left unscoped.
+// show is a genuine gap when left unscoped. This scoped_path check only
+// applies when BrowserConfig.IsolationMode is "scoped_path" (or undeclared,
+// the legacy default) -- a deployment that declares "stateless" is claiming
+// a different, connection-level isolation mechanism instead (see
+// BrowserConfig's doc comment).
 type ResourceProfile struct {
 	Path     string
 	Location Location
@@ -290,6 +332,10 @@ type CollectedConfig struct {
 	Owner            OwnerConfig
 	Bridge           BridgeConfig
 	ResourceProfiles []ResourceProfile
+	// Browser is the deployment-level backend/isolation-mode declaration
+	// TA14 checks alongside the per-index ResourceProfiles list -- see
+	// BrowserConfig's doc comment.
+	Browser          BrowserConfig
 	ChannelInstances []ChannelInstance
 	// Warnings holds one message per config file containing a field this
 	// collector doesn't recognize (e.g. a newer goclaw schema), plus any
@@ -322,7 +368,20 @@ type rawDeploymentFile struct {
 	} `yaml:"sandbox"`
 	Resources struct {
 		Browser struct {
-			Profiles []struct {
+			// Backend names the browser/headless-automation backend in use,
+			// e.g. "chrome" or "lightpanda" (goclaw's own
+			// GOCLAW_BROWSER_BACKEND values, goclaw#1028). Only used to
+			// detect that browser automation is declared at all -- TA14
+			// does not judge backend choice itself.
+			Backend string `yaml:"backend"`
+			// BackendIsolationMode is the deployment's declared
+			// tenant-isolation posture for Backend: "scoped_path" (the
+			// legacy convention -- every profiles[].path must embed
+			// ${TENANT_ID}) or "stateless" (isolation is claimed to be
+			// architectural, e.g. a fresh browser per CDP connection, so no
+			// persistent scannable path is expected to exist at all).
+			BackendIsolationMode string `yaml:"backend_isolation_mode"`
+			Profiles             []struct {
 				Path string `yaml:"path"`
 			} `yaml:"profiles"`
 		} `yaml:"browser"`
@@ -482,6 +541,24 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 		cfg.SandboxOnUnavailable = raw.Sandbox.OnUnavailable
 		cfg.SandboxOnUnavailableDeclared = true
 		cfg.SandboxOnUnavailableLocation = Location{File: path, Line: line}
+	}
+	// Browser is deployment-level, not a list -- only overwrite cfg.Browser
+	// fields the current file actually declares, mirroring how Bridge above
+	// and SandboxOnUnavailable handle "last write wins, but only for keys a
+	// later file actually mentions" merging. A later file with no
+	// resources.browser section at all must never silently clobber an
+	// earlier file's real declaration with the zero value.
+	if line, ok := lines.declaredLine("resources.browser.backend"); ok {
+		cfg.Browser.BackendDeclared = true
+		cfg.Browser.Backend = raw.Resources.Browser.Backend
+		cfg.Browser.Location = Location{File: path, Line: line}
+	}
+	if line, ok := lines.declaredLine("resources.browser.backend_isolation_mode"); ok {
+		cfg.Browser.IsolationModeDeclared = true
+		cfg.Browser.IsolationMode = raw.Resources.Browser.BackendIsolationMode
+		if !cfg.Browser.BackendDeclared {
+			cfg.Browser.Location = Location{File: path, Line: line}
+		}
 	}
 	for i, p := range raw.Resources.Browser.Profiles {
 		cfg.ResourceProfiles = append(cfg.ResourceProfiles, ResourceProfile{
