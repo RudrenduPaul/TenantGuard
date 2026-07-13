@@ -358,6 +358,63 @@ func TestTA15(t *testing.T) {
 	}
 }
 
+// TestTA16 covers goclaw#1430's LLM-provider surface: a local litellm/
+// bifrost provider connection with no SSRF validation must FAIL the same
+// way TA02 fails an unvalidated local MCP tool.
+func TestTA16(t *testing.T) {
+	vuln := scanFixture(t, "testdata/ta16/vulnerable", "TA16")
+	if countStatus(vuln, policy.StatusFail) == 0 {
+		t.Errorf("expected at least one TA16 FAIL on the vulnerable fixture, got %+v", vuln)
+	}
+	clean := scanFixture(t, "testdata/ta16/clean", "TA16")
+	if countStatus(clean, policy.StatusFail) != 0 {
+		t.Errorf("expected zero TA16 FAILs on the clean fixture, got %+v", clean)
+	}
+}
+
+// TestTA16_HostnameResolution reproduces the LLM-connection half of
+// goclaw#1430 with the exact same hostname-resolution mechanism
+// TestTA02_HostnameResolution proves for MCP tools: a hostname with no
+// private-looking substring in the URL text, resolved to a private IP only
+// at collection time.
+func TestTA16_HostnameResolution(t *testing.T) {
+	orig := collector.LookupHost
+	collector.LookupHost = func(host string) ([]string, error) {
+		if host == "host.docker.internal" {
+			return []string{"10.18.231.2"}, nil
+		}
+		return orig(host)
+	}
+	t.Cleanup(func() { collector.LookupHost = orig })
+
+	vuln := scanFixture(t, "testdata/ta16/vulnerable-docker-internal", "TA16")
+	if countStatus(vuln, policy.StatusFail) == 0 {
+		t.Errorf("expected a TA16 FAIL for host.docker.internal resolving to a private IP (the goclaw#1430 LLM-connection repro), got %+v", vuln)
+	}
+}
+
+// TestTA16_UnpinnedValidatorStillFails covers the same DNS-rebinding/TOCTOU
+// gap TestTA02_UnpinnedValidatorStillFails covers for MCP tools, applied to
+// an LLM provider connection: validates_private: true alone, without
+// pins_resolved_ip: true, must still FAIL.
+func TestTA16_UnpinnedValidatorStillFails(t *testing.T) {
+	vuln := scanFixture(t, "testdata/ta16/vulnerable-unpinned", "TA16")
+	if countStatus(vuln, policy.StatusFail) == 0 {
+		t.Errorf("expected a TA16 FAIL when validates_private is true but pins_resolved_ip is not, got %+v", vuln)
+	}
+}
+
+// TestTA16_ExplicitAllowlistPasses covers the same "Option A" escape hatch
+// TestTA02_ExplicitAllowlistPasses proves for MCP tools, applied to an LLM
+// provider connection: a private host explicitly allowlisted via
+// allowed_private_host passes even with no declared validator at all.
+func TestTA16_ExplicitAllowlistPasses(t *testing.T) {
+	clean := scanFixture(t, "testdata/ta16/clean-allowlisted", "TA16")
+	if countStatus(clean, policy.StatusFail) != 0 {
+		t.Errorf("expected zero TA16 FAILs for a provider host explicitly allowlisted via allowed_private_host, got %+v", clean)
+	}
+}
+
 // TestPolicyLoadFailureIsFatal — NewEvaluator must refuse to build a partial
 // Evaluator if a policy fails to compile. There's no way to inject a broken
 // .rego file into the embedded FS from a black-box test, so this instead
@@ -368,7 +425,7 @@ func TestPolicyLoadFailureIsFatal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEvaluator with valid embedded policies should not fail: %v", err)
 	}
-	if got, want := len(ev.RuleIDs()), 15; got != want {
+	if got, want := len(ev.RuleIDs()), 16; got != want {
 		t.Errorf("RuleIDs() = %d rules, want %d — all-or-nothing loading means a partial set should never occur", got, want)
 	}
 }

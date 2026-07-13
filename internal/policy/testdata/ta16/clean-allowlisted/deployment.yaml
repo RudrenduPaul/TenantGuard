@@ -1,0 +1,9 @@
+# TA16 clean fixture — a private LLM provider connection explicitly
+# allowlisted for local dev (providers[].allowed_private_host) passes even
+# with no declared validator at all, the same "Option A" escape hatch
+# ta02/clean-allowlisted proves for MCP tools.
+providers:
+  - name: litellm-local
+    url: http://127.0.0.1:4000/v1
+    validates_private: false
+    allowed_private_host: true
