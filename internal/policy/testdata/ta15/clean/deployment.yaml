@@ -1,0 +1,12 @@
+# TA15 clean fixture — both channel_instances entries explicitly declare
+# reload_strategy: differential, so a create/update/delete on one instance
+# never triggers a full stop/restart of every other tenant's instance.
+channel_instances:
+  - channel: whatsapp
+    tenant: tenant-a
+    device_session_id: sess-tenant-a
+    reload_strategy: differential
+  - channel: slack
+    tenant: tenant-b
+    device_session_id: sess-tenant-b
+    reload_strategy: differential

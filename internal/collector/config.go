@@ -239,12 +239,23 @@ type BridgeConfig struct {
 // declaring different Tenant values — goclaw#1064/#1065 showed that sharing
 // one device-session row (e.g. one whatsmeow device) across channel
 // instances lets a second tenant's channel silently connect as the first
-// tenant's already-paired account.
+// tenant's already-paired account. TA15 checks ReloadStrategy — goclaw#1147
+// showed that InstanceLoader.Reload() does a destructive full stop/restart
+// of every running channel instance on any single channel_instance
+// create/update/delete, because the reload event carries no information
+// about which instance changed and there is no fingerprint/diff step, so one
+// tenant's channel CRUD interrupts every other tenant's in-progress
+// conversations across every channel.
 type ChannelInstance struct {
 	Channel         string
 	Tenant          string
 	DeviceSessionID string
-	Location        Location
+	// ReloadStrategy is the deployment's declared reload behavior for this
+	// channel instance, e.g. "differential" or "full". TA15 fails closed on
+	// anything other than "differential" (including an undeclared/empty
+	// value), matching this collector's fail-loudly philosophy.
+	ReloadStrategy string
+	Location       Location
 }
 
 // CollectedConfig is the single merged document every Rego policy evaluates
@@ -377,6 +388,7 @@ type rawDeploymentFile struct {
 		Channel         string `yaml:"channel"`
 		Tenant          string `yaml:"tenant"`
 		DeviceSessionID string `yaml:"device_session_id"`
+		ReloadStrategy  string `yaml:"reload_strategy"`
 	} `yaml:"channel_instances"`
 }
 
@@ -560,6 +572,7 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 			Channel:         c.Channel,
 			Tenant:          c.Tenant,
 			DeviceSessionID: c.DeviceSessionID,
+			ReloadStrategy:  c.ReloadStrategy,
 			Location:        Location{File: path, Line: lines.lookup("channel_instances", i)},
 		})
 	}

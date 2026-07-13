@@ -298,6 +298,22 @@ func TestTA11(t *testing.T) {
 	}
 }
 
+// TestTA15 proves goclaw#1147's fix: a channel_instances entry that doesn't
+// explicitly declare reload_strategy: differential (undeclared, empty, or
+// "full") is a fail-closed violation, since InstanceLoader.Reload()
+// otherwise defaults to a destructive full stop/restart of every running
+// channel instance on any single create/update/delete.
+func TestTA15(t *testing.T) {
+	vuln := scanFixture(t, "testdata/ta15/vulnerable", "TA15")
+	if got := countStatus(vuln, policy.StatusFail); got != 2 {
+		t.Errorf("expected exactly 2 TA15 FAILs (undeclared + explicit full) on the vulnerable fixture, got %d: %+v", got, vuln)
+	}
+	clean := scanFixture(t, "testdata/ta15/clean", "TA15")
+	if countStatus(clean, policy.StatusFail) != 0 {
+		t.Errorf("expected zero TA15 FAILs when every entry declares reload_strategy: differential, got %+v", clean)
+	}
+}
+
 // TestPolicyLoadFailureIsFatal — NewEvaluator must refuse to build a partial
 // Evaluator if a policy fails to compile. There's no way to inject a broken
 // .rego file into the embedded FS from a black-box test, so this instead
@@ -308,7 +324,7 @@ func TestPolicyLoadFailureIsFatal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEvaluator with valid embedded policies should not fail: %v", err)
 	}
-	if got, want := len(ev.RuleIDs()), 14; got != want {
+	if got, want := len(ev.RuleIDs()), 15; got != want {
 		t.Errorf("RuleIDs() = %d rules, want %d — all-or-nothing loading means a partial set should never occur", got, want)
 	}
 }

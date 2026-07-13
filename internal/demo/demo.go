@@ -1,7 +1,8 @@
 // Package demo bundles a single synthetic deployment config combining one
 // violation of each TA01-TA05 rule plus TA09/TA10/TA13 (deployment-level
 // checks), TA06 (cron creator identity), TA07 (sandbox container
-// privilege), and TA11 (cross-tenant channel-session collision), so
+// privilege), TA11 (cross-tenant channel-session collision), and TA15
+// (undeclared channel-instance reload strategy), so
 // `tenantguard scan --demo`
 package demo
 
