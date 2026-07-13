@@ -1,0 +1,7 @@
+# TA14 vulnerable fixture (deployment-level) -- a browser backend is
+# declared but no backend_isolation_mode posture is declared at all. Before
+# this check existed, this deployment (zero resources.browser.profiles
+# entries) would scan clean by omission, not by verification.
+resources:
+  browser:
+    backend: lightpanda

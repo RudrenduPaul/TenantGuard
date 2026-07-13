@@ -131,9 +131,7 @@ func (e *Evaluator) Evaluate(ctx context.Context, cfg *collector.CollectedConfig
 		case "TA13":
 			findings = append(findings, buildTA13Findings(cfg, results)...)
 		case "TA14":
-			findings = append(findings, buildFindings(r.id, len(cfg.ResourceProfiles), violationSet, func(i int) collector.Location {
-				return cfg.ResourceProfiles[i].Location
-			})...)
+			findings = append(findings, buildTA14Findings(cfg, violationSet)...)
 		case "TA06":
 			findings = append(findings, buildFindings(r.id, len(cfg.CronSchedules), violationSet, func(i int) collector.Location {
 				return cfg.CronSchedules[i].Location
@@ -358,6 +356,60 @@ func buildTA13Findings(cfg *collector.CollectedConfig, results rego.ResultSet) [
 		MapsToIssue: meta.mapsToIssue,
 		Provisional: true,
 	}}
+}
+
+// buildTA14Findings handles TA14's combined shape: one Finding per declared
+// resources.browser.profiles[] entry (the same shape buildFindings would
+// produce for a plain per-index rule), plus one additional deployment-level
+// Finding for the backend/isolation-mode posture check -- emitted only when
+// a browser backend is actually declared. A deployment that never mentions
+// resources.browser.backend at all has nothing for that second check to
+// evaluate, so -- matching TA14's existing behavior when profiles is empty
+// -- it emits nothing for that piece either, rather than forcing every
+// deployment scanned to declare an isolation mode whether or not it uses
+// browser automation at all.
+//
+// Both checks share one violations set from a single ta14.rego query:
+// per-profile indices 0..len(ResourceProfiles)-1 for the path-scoping
+// check, and the sentinel index count(ResourceProfiles) for the
+// backend/isolation-mode check -- see ta14.rego's own comments for why that
+// sentinel can never collide with a real profile index.
+func buildTA14Findings(cfg *collector.CollectedConfig, violations map[int]bool) []Finding {
+	meta := ruleMetadata["TA14"]
+	var out []Finding
+
+	for i, p := range cfg.ResourceProfiles {
+		status := StatusPass
+		if violations[i] {
+			status = StatusFail
+		}
+		out = append(out, Finding{
+			RuleID:      "TA14",
+			Status:      status,
+			Location:    p.Location,
+			Description: meta.description,
+			MapsToIssue: meta.mapsToIssue,
+			Provisional: true,
+		})
+	}
+
+	if cfg.Browser.BackendDeclared {
+		sentinel := len(cfg.ResourceProfiles)
+		status := StatusPass
+		if violations[sentinel] {
+			status = StatusFail
+		}
+		out = append(out, Finding{
+			RuleID:      "TA14",
+			Status:      status,
+			Location:    cfg.Browser.Location,
+			Description: meta.description,
+			MapsToIssue: meta.mapsToIssue,
+			Provisional: true,
+		})
+	}
+
+	return out
 }
 
 func lower(s string) string {

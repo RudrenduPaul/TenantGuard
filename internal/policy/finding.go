@@ -87,7 +87,7 @@ var ruleMetadata = map[string]ruleMeta{
 	},
 	"TA14": {
 		id:          "TA14",
-		description: "browser/container profile storage path is not scoped per-agent/per-tenant",
+		description: "browser/container profile storage path is not scoped per-agent/per-tenant, or a deployment declares a browser backend (resources.browser.backend) without also declaring a recognized backend_isolation_mode (\"scoped_path\" or \"stateless\") -- see goclaw#1028's Lightpanda backend for why a stateless, connection-level isolation claim needs its own declared posture rather than silently passing because it has no profiles to scan",
 		mapsToIssue: "goclaw#778",
 	},
 	"TA06": {
