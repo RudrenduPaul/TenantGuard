@@ -1,0 +1,9 @@
+node_modules/
+*.tgz
+package-lock.json
+npm-debug.log*
+
+# Prebuilt binaries are fetched fresh at prepack time (see scripts/fetch-binary.js)
+# and verified against the release's checksums.txt -- never committed to git.
+platforms/*/bin/tenantguard
+platforms/*/bin/tenantguard.exe

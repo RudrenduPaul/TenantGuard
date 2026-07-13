@@ -29,6 +29,22 @@ Every finding names the exact config field at fault, the upstream issue it repro
 
     tenantguard scan --demo
 
+## Install via npm
+
+Already in a Node/JS toolchain (agent frameworks, CI scripts) and don't want to
+install Go? tenantguard also ships as an npm package with prebuilt binaries for
+macOS, Linux, and Windows (x64 and arm64) -- no compiler, no postinstall
+network download. The one prebuilt binary for your machine installs as a
+regular optional dependency (npm's own `os`/`cpu` platform matching decides
+which), and a small Node shim execs it directly.
+
+    npx tenantguard scan --target ./deployment/config
+
+or install it globally:
+
+    npm install -g tenantguard
+    tenantguard scan --demo
+
 ## The checks
 
 | Rule | What it catches | Maps to |
