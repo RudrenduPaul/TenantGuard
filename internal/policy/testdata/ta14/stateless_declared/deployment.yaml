@@ -1,0 +1,10 @@
+# TA14 stateless fixture -- reproduces nextlevelbuilder/goclaw#1028's
+# Lightpanda backend: no persistent profile path at all, isolation is
+# claimed via a fresh browser per CDP connection. Declaring
+# backend_isolation_mode: stateless gives TenantGuard an explicit claim to
+# check instead of the backend silently passing because it has zero
+# resources.browser.profiles entries.
+resources:
+  browser:
+    backend: lightpanda
+    backend_isolation_mode: stateless

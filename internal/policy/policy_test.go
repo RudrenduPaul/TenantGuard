@@ -265,6 +265,50 @@ func TestTA14(t *testing.T) {
 	}
 }
 
+// TestTA14_BackendWithoutIsolationMode proves the capability-gap fix: a
+// deployment that declares resources.browser.backend (a real browser
+// automation backend is in use) but never declares backend_isolation_mode
+// must FAIL, not silently scan clean because it has zero
+// resources.browser.profiles entries to iterate. This reproduces the exact
+// shape of nextlevelbuilder/goclaw#1028's Lightpanda backend before it
+// declares an isolation posture at all.
+func TestTA14_BackendWithoutIsolationMode(t *testing.T) {
+	findings := scanFixture(t, "testdata/ta14/backend_without_mode", "TA14")
+	if countStatus(findings, policy.StatusFail) == 0 {
+		t.Errorf("expected a TA14 FAIL when resources.browser.backend is declared with no backend_isolation_mode, got %+v", findings)
+	}
+	if len(findings) != 1 {
+		t.Errorf("expected exactly one TA14 Finding (deployment-level check, zero profiles declared), got %d: %+v", len(findings), findings)
+	}
+}
+
+// TestTA14_StatelessIsolationDeclared proves the other half of the fix: a
+// deployment that explicitly declares backend_isolation_mode: stateless
+// (goclaw#1028's own claim -- "isolation is implicit, every connection gets
+// a fresh browser") now PASSES the deployment-level check instead of
+// producing no finding at all. This is the case the capability-gap review
+// asked TenantGuard to be able to represent and check.
+func TestTA14_StatelessIsolationDeclared(t *testing.T) {
+	findings := scanFixture(t, "testdata/ta14/stateless_declared", "TA14")
+	if countStatus(findings, policy.StatusFail) != 0 {
+		t.Errorf("expected zero TA14 FAILs when backend_isolation_mode: stateless is explicitly declared, got %+v", findings)
+	}
+	if countStatus(findings, policy.StatusPass) != 1 {
+		t.Errorf("expected exactly one TA14 PASS (the deployment-level isolation-mode check), got %+v", findings)
+	}
+}
+
+// TestTA14_UnrecognizedIsolationMode proves an unrecognized
+// backend_isolation_mode value (neither "scoped_path" nor "stateless", e.g.
+// a typo) FAILs loudly instead of being silently treated as an implicit
+// stateless skip.
+func TestTA14_UnrecognizedIsolationMode(t *testing.T) {
+	findings := scanFixture(t, "testdata/ta14/unrecognized_mode", "TA14")
+	if countStatus(findings, policy.StatusFail) == 0 {
+		t.Errorf("expected a TA14 FAIL for an unrecognized backend_isolation_mode value, got %+v", findings)
+	}
+}
+
 func TestTA06(t *testing.T) {
 	vuln := scanFixture(t, "testdata/ta06/vulnerable", "TA06")
 	if countStatus(vuln, policy.StatusFail) == 0 {
