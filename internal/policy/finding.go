@@ -110,4 +110,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "channel_instances entry does not declare reload_strategy: differential, so any single create/update/delete on that entry triggers a full stop/restart of every running channel instance across all tenants (no per-instance fingerprint/diff step). CAVEAT: a PASS trusts the deployment's own reload_strategy declaration -- TenantGuard cannot verify the real InstanceLoader actually performs a differential (fingerprint-diffed) reload rather than the destructive full rebuild, so a mismatched declaration would still scan clean",
 		mapsToIssue: "goclaw#1147",
 	},
+	"TA16": {
+		id:          "TA16",
+		description: "LLM provider connection URL (litellm, bifrost, or similar) targets a private/loopback/reserved address (via real CIDR containment on a literal or DNS-resolved IP) without a verified, IP-pinned SSRF validator or an explicit host allowlist entry. CAVEAT: a PASS trusts the deployment's own pins_resolved_ip/validates_private declaration -- TenantGuard cannot verify the real validator actually pins the resolved IP for the connection itself, so DNS-rebinding/TOCTOU risk persists if that declaration is inaccurate. Entries with no url declared are skipped (see TA08 for OAuth/credential-storage hygiene on those)",
+		mapsToIssue: "goclaw#1430",
+	},
 }

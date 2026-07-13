@@ -29,6 +29,7 @@ var hipaaCitations = map[string]string{
 	"TA07": "HIPAA Sec164.312(a)(1) Access Control",
 	"TA11": "HIPAA Sec164.312(a)(1) Access Control",
 	"TA15": "HIPAA Sec164.312(a)(1) Access Control",
+	"TA16": "HIPAA Sec164.312(e)(1) Transmission Security",
 }
 
 // Annotate attaches a provisional HIPAA citation to every FAIL finding in

@@ -22,7 +22,7 @@ var regoFS embed.FS
 
 // ruleOrder is fixed so terminal/SARIF output is always in the same order,
 // and so a policy load failure can name exactly which rule failed to prepare.
-var ruleOrder = []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA08", "TA09", "TA10", "TA12", "TA13", "TA14", "TA06", "TA07", "TA11", "TA15"}
+var ruleOrder = []string{"TA01", "TA02", "TA03", "TA04", "TA05", "TA08", "TA09", "TA10", "TA12", "TA13", "TA14", "TA06", "TA07", "TA11", "TA15", "TA16"}
 
 // preparedRule pairs a rule ID with its compiled query, built once at
 // Evaluator construction via PrepareForEval — per OPA's own documented
@@ -117,6 +117,10 @@ func (e *Evaluator) Evaluate(ctx context.Context, cfg *collector.CollectedConfig
 		case "TA05":
 			findings = append(findings, buildTA05Findings(cfg, results)...)
 		case "TA08":
+			findings = append(findings, buildFindings(r.id, len(cfg.Providers), violationSet, func(i int) collector.Location {
+				return cfg.Providers[i].Location
+			})...)
+		case "TA16":
 			findings = append(findings, buildFindings(r.id, len(cfg.Providers), violationSet, func(i int) collector.Location {
 				return cfg.Providers[i].Location
 			})...)

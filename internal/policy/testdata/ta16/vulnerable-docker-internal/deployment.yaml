@@ -1,0 +1,11 @@
+# TA16 vulnerable fixture — an LLM provider (litellm) pointed at a hostname
+# that resolves to a private IP but has no private-looking substring in the
+# URL text itself, mirroring the exact goclaw#1070 headline repro TA02
+# catches for MCP tools (ta02/vulnerable-docker-internal), applied here to
+# the LLM-provider surface goclaw#1430 also names. The corresponding Go test
+# (TestTA16_HostnameResolution) overrides collector.LookupHost to
+# deterministically simulate this resolution without live DNS.
+providers:
+  - name: litellm-docker
+    url: http://host.docker.internal:4000/v1
+    validates_private: false
