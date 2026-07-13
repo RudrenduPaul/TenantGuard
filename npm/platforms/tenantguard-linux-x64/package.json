@@ -1,0 +1,24 @@
+{
+  "name": "@tenantguard/linux-x64",
+  "version": "0.1.0",
+  "description": "Prebuilt tenantguard binary for linux/x64. Installed automatically as an optional dependency of the tenantguard npm package; not meant to be installed directly.",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/RudrenduPaul/TenantGuard",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RudrenduPaul/TenantGuard.git"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/fetch-binary.js linux amd64 tar.gz tenantguard"
+  },
+  "files": [
+    "bin/tenantguard",
+    "LICENSE"
+  ]
+}
