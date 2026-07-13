@@ -42,7 +42,7 @@ npx tenantguard scan --target ./deployment/config
 
 ## Features
 
-TenantGuard scans a self-hosted, multi-tenant AI-agent deployment's configuration against 14 rules, each derived from a real, confirmed tenant-isolation failure mode. Every rule is fail-closed: an undeclared or ambiguous setting is a violation, not a silent pass.
+TenantGuard scans a self-hosted, multi-tenant AI-agent deployment's configuration against 15 rules, each derived from a real, confirmed tenant-isolation failure mode. Every rule is fail-closed: an undeclared or ambiguous setting is a violation, not a silent pass.
 
 ### Tenant isolation boundaries
 
@@ -52,6 +52,7 @@ TenantGuard scans a self-hosted, multi-tenant AI-agent deployment's configuratio
 | **TA03** | A cron binding's `target_agent` must belong to the tenant that declared the binding; a dangling or cross-tenant reference fails closed. Maps to goclaw#1217. |
 | **TA11** | Flags two `channel_instances` entries that share the same `device_session_id` but declare different tenants (e.g. a shared WhatsApp device row). Maps to goclaw#1064/#1065. |
 | **TA14** | A per-agent resource profile (browser/container) is a violation unless its path contains the `${TENANT_ID}` placeholder. Maps to goclaw#778. |
+| **TA15** | Flags a `channel_instances` entry that doesn't explicitly declare `reload_strategy: differential`; an undeclared value or `full` both mean any single create/update/delete on that entry triggers a destructive full stop/restart of every running channel instance across every tenant. Trusts the deployment's own declaration (TenantGuard cannot verify the real loader actually diffs by fingerprint). Maps to goclaw#1147. |
 
 ### Network and credential exposure
 
@@ -195,13 +196,13 @@ Exit codes (defined in `cmd/tenantguard/main.go`):
 
 | Tool | Focus | Multi-tenant AI-agent aware | SARIF output | Rule count | Project maturity |
 |---|---|---|---|---|---|
-| **TenantGuard** | Tenant-isolation config auditing for self-hosted multi-agent platforms | Yes, purpose-built for this one surface | Yes, verified (SARIF 2.1.0) | 14, all scoped to tenant isolation | v0.1.0, single tagged release |
+| **TenantGuard** | Tenant-isolation config auditing for self-hosted multi-agent platforms | Yes, purpose-built for this one surface | Yes, verified (SARIF 2.1.0) | 15, all scoped to tenant isolation | v0.1.0, single tagged release |
 | [Checkov](https://github.com/bridgecrewio/checkov) | General-purpose IaC/cloud misconfiguration scanner (Terraform, CloudFormation, Kubernetes, Dockerfile, and more) | No, README makes no reference to multi-tenant AI-agent platforms or tenant-isolation checks | Yes, verified (`-o sarif`) | 1,000+, general cloud/IaC policies | 8.9k GitHub stars, long-established, actively maintained |
 | [Conftest](https://github.com/open-policy-agent/conftest) | Reference OPA/Rego policy-testing tool for structured config data (18+ input formats) | No, the generic Rego test harness other tools build policy packs on top of; no built-in tenant-isolation or AI-agent rule pack | Yes, verified (`-o sarif`, SARIF 2.1.0) | 0 built-in (a policy-testing engine, not a rule pack) | Long-established reference OPA project, actively maintained |
 | [PolicyGuard](https://github.com/ToluGIT/policyguard) | Terraform/OpenTofu AWS/Azure misconfiguration scanner (Go + OPA/Rego, Cobra CLI, sandboxed OPA engine) | No, narrowly scoped to Terraform/OpenTofu AWS/Azure resources; no mention of multi-tenant systems or AI-agent platforms | Yes, verified (SARIF 2.1.0 with stable fingerprints + CWE tags) | 15+ AWS/Azure resource checks | 1 star, 2 forks, 4 releases (v0.3.1) |
 | [AgentShield](https://github.com/affaan-m/agentshield) | AI-agent security scanner (secrets, permissions, hooks, MCP server security, agent-config review) | No, explicitly scoped to a single Claude Code user's local `.claude/` directory (single-user/team dev environment), not multi-tenant SaaS isolation | Yes, verified (`--format sarif`, SARIF 2.1.0) | 102, across 5 categories | Built at a Feb 2026 hackathon, early-stage |
 
-TenantGuard trades breadth for depth: 14 rules is a fraction of Checkov's 1,000+, and TenantGuard is a single v0.1.0 release against Checkov, Conftest, and PolicyGuard's much longer track records. What TenantGuard has that none of the others do is a rule pack purpose-built for cross-tenant isolation in self-hosted AI-agent deployments, a surface none of the general-purpose IaC scanners cover and even AgentShield, the closest domain match, stops short of: it audits a single developer's local config, not cross-tenant isolation in a self-hosted, multi-tenant deployment. That is the niche TenantGuard targets, narrowly and on purpose.
+TenantGuard trades breadth for depth: 15 rules is a fraction of Checkov's 1,000+, and TenantGuard is a single v0.1.0 release against Checkov, Conftest, and PolicyGuard's much longer track records. What TenantGuard has that none of the others do is a rule pack purpose-built for cross-tenant isolation in self-hosted AI-agent deployments, a surface none of the general-purpose IaC scanners cover and even AgentShield, the closest domain match, stops short of: it audits a single developer's local config, not cross-tenant isolation in a self-hosted, multi-tenant deployment. That is the niche TenantGuard targets, narrowly and on purpose.
 
 Precision/recall benchmarks for TenantGuard's own rule set against labeled fixtures are not yet published; where a competitor above reports a number (e.g. PolicyGuard's precision/recall), figures are quoted from that project's own README, not independently re-verified here.
 
@@ -209,14 +210,14 @@ Precision/recall benchmarks for TenantGuard's own rule set against labeled fixtu
 
 TenantGuard is a command-line policy-as-code scanner, written in Go and built on OPA/Rego, that audits a self-hosted multi-tenant AI-agent platform's configuration for tenant-isolation defects: the class of bug where one tenant's agent, sandbox, cron job, or credential can reach or affect another tenant.
 
-TenantGuard exists because a real, confirmed multi-tenant AI-agent platform (goclaw) has had multiple open, unresolved issues in exactly this category, including a sandbox mount not scoped per tenant, a cross-agent authorization gap, an exec tool that leaks secrets through an indirect path, an approval bypass keyed on a filename instead of a real path scope, and an SSRF validation mismatch on saved tool URLs. No existing general-purpose IaC scanner (Checkov, Conftest, PolicyGuard) or AI-agent security scanner (AgentShield) checks for this specific failure category: cross-tenant isolation in a self-hosted, multi-agent deployment. TenantGuard fills that gap with 14 fail-closed rules, each traceable to a real, cited issue.
+TenantGuard exists because a real, confirmed multi-tenant AI-agent platform (goclaw) has had multiple open, unresolved issues in exactly this category, including a sandbox mount not scoped per tenant, a cross-agent authorization gap, an exec tool that leaks secrets through an indirect path, an approval bypass keyed on a filename instead of a real path scope, and an SSRF validation mismatch on saved tool URLs. No existing general-purpose IaC scanner (Checkov, Conftest, PolicyGuard) or AI-agent security scanner (AgentShield) checks for this specific failure category: cross-tenant isolation in a self-hosted, multi-agent deployment. TenantGuard fills that gap with 15 fail-closed rules, each traceable to a real, cited issue.
 
 TenantGuard is not a generic Terraform/Kubernetes scanner and does not replace Checkov or Conftest for general cloud-infrastructure misconfiguration. It is scoped specifically to the tenant-isolation surface of self-hosted multi-tenant agent deployments.
 
 ## FAQ
 
 **How is TenantGuard different from a generic IaC scanner like Checkov or Conftest?**
-Checkov and Conftest scan general infrastructure-as-code (Terraform, Kubernetes, CloudFormation, and similar) for broad categories of misconfiguration. Neither ships a rule pack for multi-tenant AI-agent deployments. TenantGuard's 14 rules are purpose-built for that one surface: sandbox mounts, cron/agent bindings, MCP tool registrations, exec approvals, and channel/session identity, each derived from a real, cited defect.
+Checkov and Conftest scan general infrastructure-as-code (Terraform, Kubernetes, CloudFormation, and similar) for broad categories of misconfiguration. Neither ships a rule pack for multi-tenant AI-agent deployments. TenantGuard's 15 rules are purpose-built for that one surface: sandbox mounts, cron/agent bindings, MCP tool registrations, exec approvals, and channel/session identity, each derived from a real, cited defect.
 
 **Does TenantGuard replace OPA or Conftest?**
 No. TenantGuard's rules are written in Rego and TenantGuard bundles its own evaluation path; it is a purpose-built policy pack and CLI, not a general-purpose Rego test harness. If you need to test arbitrary structured config against arbitrary Rego policies, Conftest is the right general tool. TenantGuard is the right tool specifically for tenant-isolation checks on a multi-agent deployment.

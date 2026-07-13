@@ -106,4 +106,9 @@ var ruleMetadata = map[string]ruleMeta{
 		description: "channel/session device identity is shared across channel_instances declaring different tenants",
 		mapsToIssue: "goclaw#1064",
 	},
+	"TA15": {
+		id:          "TA15",
+		description: "channel_instances entry does not declare reload_strategy: differential, so any single create/update/delete on that entry triggers a full stop/restart of every running channel instance across all tenants (no per-instance fingerprint/diff step). CAVEAT: a PASS trusts the deployment's own reload_strategy declaration -- TenantGuard cannot verify the real InstanceLoader actually performs a differential (fingerprint-diffed) reload rather than the destructive full rebuild, so a mismatched declaration would still scan clean",
+		mapsToIssue: "goclaw#1147",
+	},
 }
