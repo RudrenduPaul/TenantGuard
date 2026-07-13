@@ -1,0 +1,9 @@
+# TA16 vulnerable fixture — validates_private: true alone is not enough for
+# an LLM provider connection either: without pins_resolved_ip: true, the
+# declared validator may check the hostname once at save-time but let the
+# runtime client re-resolve at connect-time (DNS rebinding / TOCTOU),
+# mirroring ta02/vulnerable-unpinned.
+providers:
+  - name: bifrost-local
+    url: http://127.0.0.1:8080/v1
+    validates_private: true

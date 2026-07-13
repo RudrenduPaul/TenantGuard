@@ -75,9 +75,19 @@ type regoApproval struct {
 	PathScoped bool   `json:"path_scoped"`
 }
 
+// regoProvider is the Rego-facing shape of collector.ProviderEntry. Beyond
+// the TA08 OAuth-encryption fields, it carries everything TA16 needs to
+// decide private-target classification for LLM provider connections
+// (litellm, bifrost, and similar) the same way regoMCPTool does for MCP
+// tools -- see goclaw#1430.
 type regoProvider struct {
-	Name                        string `json:"name"`
-	OAuthTokenStorageEncryption string `json:"oauth_token_storage_encryption"`
+	Name                        string   `json:"name"`
+	OAuthTokenStorageEncryption string   `json:"oauth_token_storage_encryption"`
+	URL                         string   `json:"url"`
+	ValidatesPrivate            bool     `json:"validates_private"`
+	PinsResolvedIP              bool     `json:"pins_resolved_ip"`
+	AllowedPrivateHost          bool     `json:"allowed_private_host"`
+	ResolvedIPs                 []string `json:"resolved_ips"`
 }
 
 type regoExec struct {
@@ -170,7 +180,15 @@ func toRegoInput(cfg *collector.CollectedConfig) regoInput {
 		out.ExecTools = append(out.ExecTools, re)
 	}
 	for _, p := range cfg.Providers {
-		out.Providers = append(out.Providers, regoProvider{Name: p.Name, OAuthTokenStorageEncryption: p.OAuthTokenStorageEncryption})
+		out.Providers = append(out.Providers, regoProvider{
+			Name:                        p.Name,
+			OAuthTokenStorageEncryption: p.OAuthTokenStorageEncryption,
+			URL:                         p.URL,
+			ValidatesPrivate:            p.ValidatesPrivate,
+			PinsResolvedIP:              p.PinsResolvedIP,
+			AllowedPrivateHost:          p.ExplicitlyAllowedHost,
+			ResolvedIPs:                 p.ResolvedIPs,
+		})
 	}
 	// OwnerIDs is always a non-nil (possibly empty) slice here so Rego's
 	// count(input.owner_ids) sees a concrete array, never null — count()

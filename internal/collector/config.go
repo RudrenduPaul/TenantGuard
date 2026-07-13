@@ -233,11 +233,37 @@ type ApprovalEntry struct {
 
 // ProviderEntry is one entry in a deployment's providers list. TA08 checks
 // OAuthTokenStorageEncryption for a declared strong-encryption algorithm on
-// stored OAuth/credential tokens.
+// stored OAuth/credential tokens. TA16 checks URL for the same SSRF-risk
+// classification TA02 applies to MCP tools, but for local LLM
+// gateways/connections (litellm, bifrost, and similar) — see goclaw#1430,
+// which reports that SSRF protection blocks both local MCP gateways AND
+// local LLM connections, but only the MCP-gateway half was previously
+// modeled anywhere in this collector.
 type ProviderEntry struct {
 	Name                        string
 	OAuthTokenStorageEncryption string
-	Location                    Location
+
+	// URL is the provider's connection endpoint (e.g. a litellm or bifrost
+	// base_url pointing at a local gateway). Empty for providers that don't
+	// declare one — TA16 skips any entry with no URL rather than treating
+	// a blank string as a private-target violation.
+	URL string
+
+	// ValidatesPrivate, PinsResolvedIP, and ExplicitlyAllowedHost mirror
+	// MCPToolEntry's fields of the same meaning above — the identical
+	// "declared validator + IP-pinning, or an explicit allowlist escape
+	// hatch" tradeoff TA02 already models for MCP tools, applied here to
+	// LLM provider connections instead.
+	ValidatesPrivate      bool
+	PinsResolvedIP        bool
+	ExplicitlyAllowedHost bool
+
+	// ResolvedIPs is the best-effort result of resolving URL's hostname to
+	// IP address(es) ONCE at collection time — see MCPToolEntry.ResolvedIPs
+	// for why this happens in Go at collection time rather than in Rego.
+	ResolvedIPs []string
+
+	Location Location
 }
 
 // OwnerConfig captures a deployment's owner/sysadmin recovery guarantees.
@@ -421,13 +447,23 @@ type rawDeploymentFile struct {
 			SandboxConfig        map[string]any `yaml:"sandbox_config"`
 		} `yaml:"overrides"`
 	} `yaml:"agents"`
+	// Providers now also carries the URL/ValidatesPrivate/PinsResolvedIP/
+	// AllowedPrivateHost fields TA16 needs, mirroring Tools.MCP above -- see
+	// goclaw#1430 (SSRF protection blocks local MCP gateways AND local LLM
+	// connections; this closes the LLM-provider half of that report --
+	// litellm, bifrost, and similar local gateways declared under
+	// providers:).
 	Providers []struct {
 		Name  string `yaml:"name"`
+		URL   string `yaml:"url"`
 		OAuth struct {
 			TokenStorage struct {
 				Encryption string `yaml:"encryption"`
 			} `yaml:"token_storage"`
 		} `yaml:"oauth"`
+		ValidatesPrivate   bool `yaml:"validates_private"`
+		PinsResolvedIP     bool `yaml:"pins_resolved_ip"`
+		AllowedPrivateHost bool `yaml:"allowed_private_host"`
 	} `yaml:"providers"`
 	// Owner is a pointer so yaml.v3 leaves it nil when no owner: section is
 	// present at all, distinct from an owner: section present but empty —
@@ -572,7 +608,7 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 			ValidatesPrivate:      m.ValidatesPrivate,
 			PinsResolvedIP:        m.PinsResolvedIP,
 			ExplicitlyAllowedHost: m.AllowedPrivateHost,
-			ResolvedIPs:           resolveMCPHost(cfg, path, m.URL),
+			ResolvedIPs:           resolveHost(cfg, path, m.URL, "MCP tool"),
 			Location:              Location{File: path, Line: lines.lookup("tools.mcp", i)},
 		})
 	}
@@ -619,6 +655,11 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 		cfg.Providers = append(cfg.Providers, ProviderEntry{
 			Name:                        p.Name,
 			OAuthTokenStorageEncryption: p.OAuth.TokenStorage.Encryption,
+			URL:                         p.URL,
+			ValidatesPrivate:            p.ValidatesPrivate,
+			PinsResolvedIP:              p.PinsResolvedIP,
+			ExplicitlyAllowedHost:       p.AllowedPrivateHost,
+			ResolvedIPs:                 resolveHost(cfg, path, p.URL, "provider"),
 			Location:                    Location{File: path, Line: lines.lookup("providers", i)},
 		})
 	}
@@ -657,33 +698,37 @@ func mergeFile(cfg *CollectedConfig, path string) error {
 	return nil
 }
 
-// LookupHost resolves an MCP tool URL's hostname to its IP address(es) at
-// collection time. It is a package-level var — not a direct call to
-// net.LookupHost — purely so tests can substitute a deterministic fake
-// resolver instead of depending on live DNS (see the host.docker.internal
-// goclaw#1070 repro exercised in the test suite). Bounded to a short
-// timeout so a single unresolvable hostname can't hang an entire scan.
+// LookupHost resolves an MCP tool or provider URL's hostname to its IP
+// address(es) at collection time. It is a package-level var — not a direct
+// call to net.LookupHost — purely so tests can substitute a deterministic
+// fake resolver instead of depending on live DNS (see the
+// host.docker.internal goclaw#1070 repro exercised in the test suite).
+// Bounded to a short timeout so a single unresolvable hostname can't hang an
+// entire scan.
 var LookupHost = func(host string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	return net.DefaultResolver.LookupHost(ctx, host)
 }
 
-// resolveMCPHost extracts rawURL's hostname and resolves it via LookupHost,
-// once, at collection time — see MCPToolEntry.ResolvedIPs. A literal IP in
-// rawURL (e.g. http://127.0.0.1/...) resolves immediately with no network
-// call, since Go's resolver short-circuits IP literals. Resolution failure
-// is reported as a warning, never a fatal collection error: a deployment's
-// MCP tool config should still be collectible even if this machine
-// currently can't reach DNS for one of its hosts.
-func resolveMCPHost(cfg *CollectedConfig, path, rawURL string) []string {
+// resolveHost extracts rawURL's hostname and resolves it via LookupHost,
+// once, at collection time — see MCPToolEntry.ResolvedIPs and
+// ProviderEntry.ResolvedIPs. A literal IP in rawURL (e.g.
+// http://127.0.0.1/...) resolves immediately with no network call, since
+// Go's resolver short-circuits IP literals. Resolution failure is reported
+// as a warning, never a fatal collection error: a deployment's config
+// should still be collectible even if this machine currently can't reach
+// DNS for one of its hosts. kind labels the warning message (e.g. "MCP
+// tool", "provider") so a scan's Warnings list stays specific about which
+// entry a resolution failure came from.
+func resolveHost(cfg *CollectedConfig, path, rawURL, kind string) []string {
 	u, err := url.Parse(rawURL)
 	if err != nil || u.Hostname() == "" {
 		return nil
 	}
 	ips, err := LookupHost(u.Hostname())
 	if err != nil {
-		cfg.Warnings = append(cfg.Warnings, fmt.Sprintf("%s: could not resolve MCP tool hostname %q: %v", path, u.Hostname(), err))
+		cfg.Warnings = append(cfg.Warnings, fmt.Sprintf("%s: could not resolve %s hostname %q: %v", path, kind, u.Hostname(), err))
 		return nil
 	}
 	return ips

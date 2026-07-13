@@ -1,0 +1,8 @@
+# TA16 vulnerable fixture — reproduces the LLM-provider half of goclaw#1430:
+# a local litellm gateway declared under providers: with no SSRF validation
+# at all, the same way ta02/vulnerable reproduces the MCP-gateway half via
+# goclaw#1070.
+providers:
+  - name: litellm-local
+    url: http://127.0.0.1:4000/v1
+    validates_private: false

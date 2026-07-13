@@ -1,0 +1,14 @@
+# TA16 clean fixture — a public provider URL needs no validation flag. A
+# private target (here, a local bifrost gateway) is only compliant if it
+# declares BOTH validates_private AND pins_resolved_ip: true — a bare
+# validates_private: true is not enough on its own, mirroring TA02's
+# DNS-rebinding/TOCTOU rationale (goclaw#1070) applied to goclaw#1430's
+# LLM-provider surface.
+providers:
+  - name: openai
+    url: https://api.openai.com/v1
+    validates_private: false
+  - name: bifrost-local
+    url: http://127.0.0.1:8080/v1
+    validates_private: true
+    pins_resolved_ip: true
