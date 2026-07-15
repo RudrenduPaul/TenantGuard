@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 ### Added
+- `tenantguard scan --format json`: a plain, schema-light structured output
+  mode alongside `--format sarif`, for agents/scripts that want raw
+  rule_id/status/location results without SARIF's tool/run/rule/taxonomy
+  object model. Includes both PASS and FAIL findings (SARIF only emits FAIL
+  as a result), plus a `summary.fail`/`summary.pass` count.
+
+### Fixed
+- SARIF output (`--format sarif`) now declares TA15 and TA16 in
+  `runs[].tool.driver.rules`; both rules' results were already emitted but
+  the rule-ID list backing that array had not been updated when TA15/TA16
+  shipped, so SARIF consumers that key rule metadata off `driver.rules`
+  (e.g. some code-scanning UIs) would not resolve those two rule IDs.
+
+### Added (original)
 - Initial `tenantguard scan` CLI: five tenant-isolation rules (TA01-TA05), each
   mapped to a confirmed, still-open GitHub issue in `goclaw`
   (#1163, #1070, #1217, #1227, #1216).

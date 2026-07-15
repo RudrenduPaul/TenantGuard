@@ -9,16 +9,18 @@
 
 const { spawnSync } = require("child_process");
 
-// Keys are `${process.platform}-${process.arch}`. Values are the scoped
+// Keys are `${process.platform}-${process.arch}`. Values are the
 // optionalDependency package names declared in package.json -- keep these
-// two lists in sync.
+// two lists in sync. Unscoped (tenantguard-<platform>-<arch>), matching the
+// names actually published to the npm registry, not the @tenantguard/*
+// scope this file originally used.
 const PLATFORM_PACKAGES = {
-  "darwin-x64": "@tenantguard/darwin-x64",
-  "darwin-arm64": "@tenantguard/darwin-arm64",
-  "linux-x64": "@tenantguard/linux-x64",
-  "linux-arm64": "@tenantguard/linux-arm64",
-  "win32-x64": "@tenantguard/win32-x64",
-  "win32-arm64": "@tenantguard/win32-arm64",
+  "darwin-x64": "tenantguard-darwin-x64",
+  "darwin-arm64": "tenantguard-darwin-arm64",
+  "linux-x64": "tenantguard-linux-x64",
+  "linux-arm64": "tenantguard-linux-arm64",
+  "win32-x64": "tenantguard-win32-x64",
+  "win32-arm64": "tenantguard-win32-arm64",
 };
 
 function fail(message) {

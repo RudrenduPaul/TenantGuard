@@ -1,6 +1,6 @@
 {
   "name": "tenantguard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tenant-isolation security-audit CLI for self-hosted multi-tenant AI-agent platforms",
   "keywords": [
     "security",
@@ -31,11 +31,11 @@
   "os": ["darwin", "linux", "win32"],
   "cpu": ["x64", "arm64"],
   "optionalDependencies": {
-    "@tenantguard/darwin-x64": "0.1.0",
-    "@tenantguard/darwin-arm64": "0.1.0",
-    "@tenantguard/linux-x64": "0.1.0",
-    "@tenantguard/linux-arm64": "0.1.0",
-    "@tenantguard/win32-x64": "0.1.0",
-    "@tenantguard/win32-arm64": "0.1.0"
+    "tenantguard-darwin-x64": "0.1.1",
+    "tenantguard-darwin-arm64": "0.1.1",
+    "tenantguard-linux-x64": "0.1.1",
+    "tenantguard-linux-arm64": "0.1.1",
+    "tenantguard-win32-x64": "0.1.1",
+    "tenantguard-win32-arm64": "0.1.1"
   }
 }

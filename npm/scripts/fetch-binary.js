@@ -3,7 +3,7 @@
 
 /*
  * Fetches and verifies the tenantguard binary for one platform/arch from the
- * pinned v0.1.0 GitHub release, then extracts it into the calling package's
+ * pinned v0.1.1 GitHub release, then extracts it into the calling package's
  * bin/ directory.
  *
  * Runs ONLY as a "prepack" lifecycle script -- i.e. only on the machine that
@@ -35,7 +35,7 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 
-const RELEASE_TAG = "v0.1.0";
+const RELEASE_TAG = "v0.1.1";
 const RELEASE_BASE = `https://github.com/RudrenduPaul/TenantGuard/releases/download/${RELEASE_TAG}`;
 const MAX_REDIRECTS = 5;
 
