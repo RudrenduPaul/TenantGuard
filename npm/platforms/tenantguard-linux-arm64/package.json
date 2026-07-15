@@ -1,6 +1,6 @@
 {
-  "name": "@tenantguard/linux-arm64",
-  "version": "0.1.0",
+  "name": "tenantguard-linux-arm64",
+  "version": "0.1.1",
   "description": "Prebuilt tenantguard binary for linux/arm64. Installed automatically as an optional dependency of the tenantguard npm package; not meant to be installed directly.",
   "os": [
     "linux"

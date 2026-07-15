@@ -3,7 +3,7 @@
 **Find the tenant-isolation gap in your self-hosted, multi-tenant AI-agent platform before an auditor, or an attacker, does.**
 
 [![CI](https://github.com/RudrenduPaul/TenantGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/TenantGuard/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-v0.1.0-blue)](https://github.com/RudrenduPaul/TenantGuard/releases/tag/v0.1.0)
+[![Version](https://img.shields.io/badge/version-v0.1.1-blue)](https://github.com/RudrenduPaul/TenantGuard/releases/tag/v0.1.1)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 <!-- TODO: record demo GIF/asciicast of `tenantguard scan --demo` and embed it here -->
@@ -11,31 +11,27 @@
 ## Install
 
 ```
-go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@v0.1.0
+go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@v0.1.1
 ```
 
-An npm package (`tenantguard`) already exists in this repo and is close to shipping, but it is not yet published on the npm registry. Once it ships, install will look like this:
+The top-level `tenantguard` npm package (the one that would make `npm install -g tenantguard` and `npx tenantguard` work) is **not yet published** on the npm registry. It exists in this repo (`npm/tenantguard/`) and is ready to ship, but publishing is currently blocked by npm's anti-abuse heuristics on a new package name; a support ticket is open with npm. Running `npm install -g tenantguard` or `npx tenantguard` today fails with a registry 404.
+
+What **is** live on npm today are the four platform binary packages the top-level package will depend on once it ships (`tenantguard-darwin-x64`, `tenantguard-darwin-arm64`, `tenantguard-linux-x64`, `tenantguard-linux-arm64`, all v0.1.1). You can install one directly and run the binary it contains, no `go install` or Homebrew required:
 
 ```
-npm install -g tenantguard
-tenantguard scan --demo
+npm install tenantguard-darwin-arm64   # swap for your platform: darwin-x64, linux-x64, linux-arm64
+./node_modules/tenantguard-darwin-arm64/bin/tenantguard scan --demo
 ```
 
-or run it directly with npx, no install step:
-
-```
-npx tenantguard scan --target ./deployment/config
-```
-
-**Coming soon, not live yet.** Running either command today fails with a registry 404. Use `go install` above or the Homebrew tap until this section is updated with a working install command.
+This works today, verified end-to-end, but it is not the ergonomic path: there is no global `tenantguard` command on your `PATH` until the top-level package publishes. Until then, `go install` above is the recommended install method. Windows platform packages (`tenantguard-win32-x64`, `tenantguard-win32-arm64`) are not yet published either.
 
 ## Table of Contents
 
 - [Features](#features)
 - [Quickstart](#quickstart)
 - [CLI Reference](#cli-reference)
-- [How TenantGuard Compares](#how-tenantguard-compares)
-- [What Is TenantGuard and Why Does It Exist](#what-is-tenantguard-and-why-does-it-exist)
+- [How TenantGuard compares](#how-tenantguard-compares)
+- [What is TenantGuard and why does it exist](#what-is-tenantguard-and-why-does-it-exist)
 - [FAQ](#faq)
 - [Contributing](#contributing)
 - [License](#license)
@@ -83,6 +79,7 @@ TenantGuard scans a self-hosted, multi-tenant AI-agent deployment's configuratio
 Other verified capabilities:
 
 - **SARIF 2.1.0 output** (`--format sarif`), schema-valid, with real byte/line locations and messages, ready for `github/codeql-action/upload-sarif` and GitHub code scanning.
+- **Plain JSON output** (`--format json`), a schema-light alternative to SARIF for a script or agent that just wants raw `rule_id`/`status`/`file`/`line` results without SARIF's tool/run/rule/taxonomy object model. Unlike SARIF (which only reports FAIL as a "result"), the JSON mode includes every PASS too, plus a `summary.fail`/`summary.pass` count.
 - **Provisional HIPAA citations** on every finding (`--control hipaa`), mapped per rule, marked provisional (see [FAQ](#faq)).
 - **Zero-setup demo mode** (`--demo`) that scans a bundled synthetic deployment, no target config required.
 - **GitHub Action** (`action/action.yml`) that installs a pinned version via `go install` and uploads the SARIF report automatically.
@@ -97,59 +94,67 @@ Real captured output:
 
 ```
 TenantGuard: Tenant-Isolation Audit
-Target: /var/folders/m0/5tzdd47n6znb166d4w3m2q0c0000gn/T/tenantguard-demo-2069015265
+Target: /var/folders/m0/5tzdd47n6znb166d4w3m2q0c0000gn/T/tenantguard-demo-488625596
 
 [FAIL]  TA01 sandbox/workspace mount path is not scoped per-tenant (no ${TENANT_ID} placeholder and no explicit scoped_per_tenant declaration)
-  .../deployment.yaml:11
+  .../deployment.yaml:12
   Maps to: goclaw#1163 | HIPAA Sec164.312(a)(1) Access Control (provisional)
 
 [FAIL]  TA02 MCP tool URL targets a private/loopback/reserved address (via real CIDR containment on a literal or DNS-resolved IP) without a verified, IP-pinned SSRF validator or an explicit host allowlist entry. CAVEAT: a PASS trusts the deployment's own pins_resolved_ip/validates_private declaration -- TenantGuard cannot verify the real validator actually pins the resolved IP for the connection itself, so DNS-rebinding/TOCTOU risk persists if that declaration is inaccurate
-  .../deployment.yaml:21
+  .../deployment.yaml:22
   Maps to: goclaw#1070 | HIPAA Sec164.312(e)(1) Transmission Security (provisional)
 
 [FAIL]  TA03 cron binding's target agent does not belong to the declaring tenant
-  .../deployment.yaml:34
+  .../deployment.yaml:35
   Maps to: goclaw#1217 | HIPAA Sec164.312(a)(1) Access Control (provisional)
 
 [FAIL]  TA04 exec tool denies direct env dump but not indirect env reads (e.g. jq $ENV), or allows credential-chain leakage via allow_chain_exec (goclaw#1033)
-  .../deployment.yaml:24
+  .../deployment.yaml:25
   Maps to: goclaw#1227 | HIPAA Sec164.312(a)(2)(iv) Encryption/Decryption (provisional)
 
 [FAIL]  TA05 exec-approval allow-always entry is keyed on basename only, not a full path scope
-  .../deployment.yaml:29
+  .../deployment.yaml:30
   Maps to: goclaw#1216 | HIPAA Sec164.312(a)(1) Access Control (provisional)
 
 [FAIL]  TA09 sandbox fail-closed posture not declared (sandbox.on_unavailable must be "fail_closed")
-  .../tenantguard-demo-2069015265:0
+  .../tenantguard-demo-488625596:0
   Maps to: goclaw#246 | HIPAA Sec164.312(a)(1) Access Control (provisional)
 
 [FAIL]  TA10 agent does not explicitly declare a per-agent config override (workspace restriction or sandbox config), risking silent inheritance of an undeclared global default
-  .../deployment.yaml:39
+  .../deployment.yaml:40
   Maps to: goclaw#145 | HIPAA Sec164.312(a)(1) Access Control (provisional)
 
 [FAIL]  TA13 MCP/CLI bridge does not declare HMAC-signed context headers (bridge.hmac_enabled and bridge.context_headers_signed)
-  .../tenantguard-demo-2069015265:0
+  .../tenantguard-demo-488625596:0
   Maps to: goclaw#91 | HIPAA Sec164.312(e)(1) Transmission Security (provisional)
 
 [FAIL]  TA06 cron binding does not declare that its store layer captures/replays the human creator's sender identity at fire time
-  .../deployment.yaml:34
+  .../deployment.yaml:35
   Maps to: goclaw#1129 | HIPAA Sec164.312(b) Audit Controls (provisional)
 
 [FAIL]  TA07 sandbox container privilege is not hardened (root user by default, full host-env passthrough, tmpfs missing noexec/nosuid/nodev, or a dangerous Linux capability added)
-  .../deployment.yaml:11
+  .../deployment.yaml:12
   Maps to: goclaw#1014 | HIPAA Sec164.312(a)(1) Access Control (provisional)
 
 [FAIL]  TA11 channel/session device identity is shared across channel_instances declaring different tenants
-  .../deployment.yaml:52
+  .../deployment.yaml:54
   Maps to: goclaw#1064 | HIPAA Sec164.312(a)(1) Access Control (provisional)
 
 [FAIL]  TA11 channel/session device identity is shared across channel_instances declaring different tenants
-  .../deployment.yaml:55
+  .../deployment.yaml:57
   Maps to: goclaw#1064 | HIPAA Sec164.312(a)(1) Access Control (provisional)
+
+[FAIL]  TA15 channel_instances entry does not declare reload_strategy: differential, so any single create/update/delete on that entry triggers a full stop/restart of every running channel instance across all tenants (no per-instance fingerprint/diff step). CAVEAT: a PASS trusts the deployment's own reload_strategy declaration -- TenantGuard cannot verify the real InstanceLoader actually performs a differential (fingerprint-diffed) reload rather than the destructive full rebuild, so a mismatched declaration would still scan clean
+  .../deployment.yaml:54
+  Maps to: goclaw#1147 | HIPAA Sec164.312(a)(1) Access Control (provisional)
+
+[FAIL]  TA15 channel_instances entry does not declare reload_strategy: differential, so any single create/update/delete on that entry triggers a full stop/restart of every running channel instance across all tenants (no per-instance fingerprint/diff step). CAVEAT: a PASS trusts the deployment's own reload_strategy declaration -- TenantGuard cannot verify the real InstanceLoader actually performs a differential (fingerprint-diffed) reload rather than the destructive full rebuild, so a mismatched declaration would still scan clean
+  .../deployment.yaml:57
+  Maps to: goclaw#1147 | HIPAA Sec164.312(a)(1) Access Control (provisional)
 
 [PASS]  1 check(s) clear
 
-Summary: 12 FAIL, 1 PASS
+Summary: 14 FAIL, 1 PASS
 Findings map to confirmed open goclaw issues where applicable. HIPAA citations are provisional, see README.
 ```
 
@@ -161,12 +166,18 @@ Scan a real deployment and emit SARIF for code scanning instead:
 tenantguard scan --target ./deployment --format sarif --sarif-out tenantguard-report.sarif
 ```
 
+Or emit plain JSON, for a script or agent that would rather parse a flat findings array than a SARIF document:
+
+```
+tenantguard scan --target ./deployment --format json
+```
+
 ## CLI Reference
 
 TenantGuard is CLI-only: there is a single subcommand, `scan`. There is no top-level `--help` or `--version` flag; running `tenantguard` with no arguments, `tenantguard --help`, or any first argument other than `scan` prints the usage line below to stderr and exits `2`:
 
 ```
-usage: tenantguard scan [--target DIR | --demo] [--format terminal|sarif] [--control hipaa]
+usage: tenantguard scan [--target DIR | --demo] [--format terminal|sarif|json] [--control hipaa]
 ```
 
 `tenantguard scan --help` output:
@@ -178,7 +189,7 @@ Usage of scan:
   -demo
     	scan a bundled synthetic deployment instead of --target (zero setup)
   -format string
-    	output format: terminal or sarif (default "terminal")
+    	output format: terminal, sarif, or json (default "terminal")
   -sarif-out string
     	file to write SARIF output to when --format=sarif (default "tenantguard-report.sarif")
   -target string
@@ -193,21 +204,21 @@ Exit codes (defined in `cmd/tenantguard/main.go`):
 | `1` | Scan ran successfully, findings present |
 | `2` | Scan or usage error |
 
-## How TenantGuard Compares
+## How TenantGuard compares
 
 | Tool | Focus | Multi-tenant AI-agent aware | SARIF output | Rule count | Project maturity |
 |---|---|---|---|---|---|
-| **TenantGuard** | Tenant-isolation config auditing for self-hosted multi-agent platforms | Yes, purpose-built for this one surface | Yes, verified (SARIF 2.1.0) | 16, all scoped to tenant isolation | v0.1.0, single tagged release |
+| **TenantGuard** | Tenant-isolation config auditing for self-hosted multi-agent platforms | Yes, purpose-built for this one surface | Yes, verified (SARIF 2.1.0) | 16, all scoped to tenant isolation | v0.1.1, two tagged releases |
 | [Checkov](https://github.com/bridgecrewio/checkov) | General-purpose IaC/cloud misconfiguration scanner (Terraform, CloudFormation, Kubernetes, Dockerfile, and more) | No, README makes no reference to multi-tenant AI-agent platforms or tenant-isolation checks | Yes, verified (`-o sarif`) | 1,000+, general cloud/IaC policies | 8.9k GitHub stars, long-established, actively maintained |
 | [Conftest](https://github.com/open-policy-agent/conftest) | Reference OPA/Rego policy-testing tool for structured config data (18+ input formats) | No, the generic Rego test harness other tools build policy packs on top of; no built-in tenant-isolation or AI-agent rule pack | Yes, verified (`-o sarif`, SARIF 2.1.0) | 0 built-in (a policy-testing engine, not a rule pack) | Long-established reference OPA project, actively maintained |
 | [PolicyGuard](https://github.com/ToluGIT/policyguard) | Terraform/OpenTofu AWS/Azure misconfiguration scanner (Go + OPA/Rego, Cobra CLI, sandboxed OPA engine) | No, narrowly scoped to Terraform/OpenTofu AWS/Azure resources; no mention of multi-tenant systems or AI-agent platforms | Yes, verified (SARIF 2.1.0 with stable fingerprints + CWE tags) | 15+ AWS/Azure resource checks | 1 star, 2 forks, 4 releases (v0.3.1) |
 | [AgentShield](https://github.com/affaan-m/agentshield) | AI-agent security scanner (secrets, permissions, hooks, MCP server security, agent-config review) | No, explicitly scoped to a single Claude Code user's local `.claude/` directory (single-user/team dev environment), not multi-tenant SaaS isolation | Yes, verified (`--format sarif`, SARIF 2.1.0) | 102, across 5 categories | Built at a Feb 2026 hackathon, early-stage |
 
-TenantGuard trades breadth for depth: 16 rules is a fraction of Checkov's 1,000+, and TenantGuard is a single v0.1.0 release against Checkov, Conftest, and PolicyGuard's much longer track records. What TenantGuard has that none of the others do is a rule pack purpose-built for cross-tenant isolation in self-hosted AI-agent deployments, a surface none of the general-purpose IaC scanners cover and even AgentShield, the closest domain match, stops short of: it audits a single developer's local config, not cross-tenant isolation in a self-hosted, multi-tenant deployment. That is the niche TenantGuard targets, narrowly and on purpose.
+TenantGuard trades breadth for depth: 16 rules is a fraction of Checkov's 1,000+, and TenantGuard is two tagged releases old against Checkov, Conftest, and PolicyGuard's much longer track records. What TenantGuard has that none of the others do is a rule pack purpose-built for cross-tenant isolation in self-hosted AI-agent deployments, a surface none of the general-purpose IaC scanners cover and even AgentShield, the closest domain match, stops short of: it audits a single developer's local config, not cross-tenant isolation in a self-hosted, multi-tenant deployment. That is the niche TenantGuard targets, narrowly and on purpose.
 
 Precision/recall benchmarks for TenantGuard's own rule set against labeled fixtures are not yet published; where a competitor above reports a number (e.g. PolicyGuard's precision/recall), figures are quoted from that project's own README, not independently re-verified here.
 
-## What Is TenantGuard and Why Does It Exist
+## What is TenantGuard and why does it exist
 
 TenantGuard is a command-line policy-as-code scanner, written in Go and built on OPA/Rego, that audits a self-hosted multi-tenant AI-agent platform's configuration for tenant-isolation defects: the class of bug where one tenant's agent, sandbox, cron job, or credential can reach or affect another tenant.
 
@@ -235,11 +246,14 @@ Yes: `tenantguard scan --target <path-to-deployment-config-dir>`. `--demo` exist
 **Does TenantGuard produce output a CI pipeline or GitHub code scanning can consume?**
 Yes. `--format sarif --sarif-out <file>` produces a schema-valid SARIF 2.1.0 document with real result locations and messages. The bundled GitHub Action (`action/action.yml`) runs a scan and uploads the SARIF report via `github/codeql-action/upload-sarif` in one step.
 
+**Why does TenantGuard have both `--format sarif` and `--format json`? Isn't SARIF already structured output?**
+Yes, SARIF is a real, standard, machine-parseable format, and it is the right choice for CI/code-scanning integration. `--format json` exists for a different consumer: a script or agent that wants to parse `rule_id`/`status`/`file`/`line` directly, without walking SARIF's tool/run/rule/taxonomy object model first. It also reports every PASS alongside every FAIL, which SARIF deliberately does not (SARIF results represent problems found, not a full checklist), so a caller can answer "what did you check" and not just "what did you flag" from one document.
+
 **What do the CLI exit codes mean?**
 `0` is a clean scan with no findings, `1` means the scan ran successfully and found violations, and `2` is a scan or usage error (including running `tenantguard` with no subcommand, or any subcommand other than `scan`).
 
 **Is there an npm package?**
-Not yet published on the npm registry. See [Install](#install) above for the planned `npm`/`npx` commands. Use `go install` or the Homebrew tap until then.
+The top-level `tenantguard` package (the one behind `npm install -g tenantguard` / `npx tenantguard`) is not yet published; publishing is currently blocked by npm's anti-abuse heuristics on a new package name, with a support ticket open. The four platform binary packages it will depend on (`tenantguard-darwin-x64`, `tenantguard-darwin-arm64`, `tenantguard-linux-x64`, `tenantguard-linux-arm64`) are already live on the registry and installable directly today. See [Install](#install) above for the working command.
 
 **Is TenantGuard a library I can import into my own Go program?**
 No, not currently. Everything outside `cmd/tenantguard` (the collector, compliance mapping, demo fixture, policy engine, and report formatting) lives under `internal/`, which Go's own tooling makes non-importable from outside this module. TenantGuard is distributed as a CLI binary and a GitHub Action, not an importable Go package.

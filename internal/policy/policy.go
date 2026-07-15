@@ -1,6 +1,6 @@
 // Package policy embeds Open Policy Agent (github.com/open-policy-agent/opa/v1/rego)
 // as a library — not a subprocess, not a hosted control plane — to evaluate
-// the TA01-TA05 tenant-isolation rules against a collector.CollectedConfig.
+// the TA01-TA16 tenant-isolation rules against a collector.CollectedConfig.
 // Rego was chosen over a bespoke rule engine specifically because its
 // control-ID-native policy format is a direct fit for the HIPAA/SOC2
 // control-mapping story, and it stays embeddable as a single static binary.
