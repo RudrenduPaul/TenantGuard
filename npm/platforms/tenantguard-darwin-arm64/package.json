@@ -1,6 +1,6 @@
 {
-  "name": "@tenantguard/darwin-arm64",
-  "version": "0.1.0",
+  "name": "tenantguard-darwin-arm64",
+  "version": "0.1.1",
   "description": "Prebuilt tenantguard binary for darwin/arm64 (Apple Silicon macOS). Installed automatically as an optional dependency of the tenantguard npm package; not meant to be installed directly.",
   "os": [
     "darwin"

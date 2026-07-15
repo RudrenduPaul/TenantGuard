@@ -1,6 +1,6 @@
 {
-  "name": "@tenantguard/win32-x64",
-  "version": "0.1.0",
+  "name": "tenantguard-win32-x64",
+  "version": "0.1.1",
   "description": "Prebuilt tenantguard binary for win32/x64 (Windows on Intel/AMD). Installed automatically as an optional dependency of the tenantguard npm package; not meant to be installed directly.",
   "os": [
     "win32"

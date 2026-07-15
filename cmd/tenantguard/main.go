@@ -1,8 +1,8 @@
 // Command tenantguard scans a self-hosted multi-tenant AI-agent deployment's
-// configuration for confirmed tenant-isolation defects (TA01-TA05 and
-// several extension rules), each mapped to a goclaw GitHub issue or pull
-// request that reproduces the same failure mode, and reports findings with an
-// optional (provisional, unverified) HIPAA Sec164.312 citation.
+// configuration for confirmed tenant-isolation defects (16 rules, TA01-TA16),
+// each mapped to a goclaw GitHub issue or pull request that reproduces the
+// same failure mode, and reports findings with an optional (provisional,
+// unverified) HIPAA Sec164.312 citation.
 package main
 
 import (
@@ -41,7 +41,7 @@ func errf(w io.Writer, format string, args ...any) {
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] != "scan" {
-		errf(stderr, "usage: tenantguard scan [--target DIR | --demo] [--format terminal|sarif] [--control hipaa]\n")
+		errf(stderr, "usage: tenantguard scan [--target DIR | --demo] [--format terminal|sarif|json] [--control hipaa]\n")
 		return exitScanError
 	}
 
@@ -49,7 +49,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	target := fs.String("target", "", "path to the deployment config directory to scan")
 	demoMode := fs.Bool("demo", false, "scan a bundled synthetic deployment instead of --target (zero setup)")
-	format := fs.String("format", "terminal", "output format: terminal or sarif")
+	format := fs.String("format", "terminal", "output format: terminal, sarif, or json")
 	control := fs.String("control", "", "compliance framework to cite (hipaa)")
 	sarifOut := fs.String("sarif-out", "tenantguard-report.sarif", "file to write SARIF output to when --format=sarif")
 
@@ -132,6 +132,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return exitScanError
 		}
 		errf(stdout, "SARIF report written to %s\n", *sarifOut)
+	case "json":
+		if err := report.WriteJSON(stdout, scanTarget, findings); err != nil {
+			errf(stderr, "error: %v\n", err)
+			return exitScanError
+		}
 	default:
 		report.WriteTerminal(stdout, scanTarget, findings)
 	}
