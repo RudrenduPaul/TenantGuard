@@ -12,7 +12,8 @@ import (
 // TestEndToEndBinary builds the real tenantguard binary and runs it via
 // exec.Command against the bundled --demo deployment (all TA0N violations),
 // asserting both terminal and SARIF output — not just calling run() in
-// process, per the [redacted] test plan's integration-test requirement.
+// process, so a real process-boundary bug (flag parsing, exit codes, output
+// encoding) can't hide behind an in-process test double.
 func TestEndToEndBinary(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping binary build in -short mode")
