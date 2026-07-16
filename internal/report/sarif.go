@@ -1,7 +1,7 @@
 // Package report renders scan findings as human-readable terminal output and
 // as SARIF 2.1.0 (via github.com/owenrumney/go-sarif/v3), reusing a
 // maintained library for the SARIF object model instead of hand-rolling the
-// schema — see [redacted internal doc], Search Before Building.
+// schema, which is easy to get subtly wrong against the spec.
 package report
 
 import (
