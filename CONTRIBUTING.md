@@ -16,7 +16,7 @@ Every rule lives in `internal/policy/rego/ta0N.rego` and needs:
 4. A test in `internal/policy/policy_test.go` asserting both directions.
 5. If the rule should carry a HIPAA citation, add it to `hipaaCitations` in
    `internal/compliance/hipaa.go`, and be honest about whether it's a real fit, not
-   generic boilerplate (see `[redacted]`'s anti-sycophancy rules).
+   generic boilerplate — an unsupported compliance claim is worse than no claim at all.
 
 No rule ships without both fixtures. A rule with only a `vulnerable` fixture has an
 unverified false-positive rate; a rule with only a `clean` fixture has an unverified
@@ -54,8 +54,8 @@ go test ./... -cover
 govulncheck ./...
 ```
 
-All four must be clean. See `[redacted]` for the full engineering-standards bar this
-repo holds itself to.
+All four must be clean before a PR is opened — lint, vet, tests, and vulnerability
+scanning are this repo's non-negotiable baseline, not optional extras.
 
 ## Code of conduct
 
