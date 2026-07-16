@@ -3,8 +3,7 @@
 // the TA01-TA16 tenant-isolation rules against a collector.CollectedConfig.
 // Rego was chosen over a bespoke rule engine specifically because its
 // control-ID-native policy format is a direct fit for the HIPAA/SOC2
-// control-mapping story (see [redacted internal doc],
-// Approach C), and it stays embeddable as a single static binary.
+// control-mapping story, and it stays embeddable as a single static binary.
 package policy
 
 import (
