@@ -3,10 +3,9 @@
 // citation is marked provisional/unverified: it is TenantGuard's own
 // interpretation of which technical safeguard a finding relates to, not
 // legal advice, and has not been reviewed by a licensed compliance attorney
-// or healthcare-compliance consultant. See
-// [redacted internal doc], Dependencies section, for
-// the plan to get this reviewed before any hosted-tier compliance-report
-// claim ships.
+// or healthcare-compliance consultant. This mapping needs that review before
+// any hosted-tier compliance-report claim ships as anything more than
+// provisional guidance.
 package compliance
 
 import "github.com/RudrenduPaul/TenantGuard/internal/policy"
