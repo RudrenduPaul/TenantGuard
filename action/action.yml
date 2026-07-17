@@ -39,16 +39,25 @@ runs:
       with:
         go-version: "1.26"
 
+    # Inputs are passed via env: rather than interpolated into the script with ${{ }} --
+    # GitHub substitutes ${{ }} expressions into the script text before the shell ever
+    # runs it, so any input value containing shell metacharacters would otherwise
+    # execute verbatim on the runner.
     - name: Install tenantguard
       shell: bash
-      run: go install "github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@${{ inputs.version }}"
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+      run: go install "github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@$INPUT_VERSION"
 
     - name: Run scan
       id: scan
       shell: bash
+      env:
+        INPUT_TARGET: ${{ inputs.target }}
+        INPUT_CONTROL: ${{ inputs.control }}
       run: |
         set +e
-        tenantguard scan --target "${{ inputs.target }}" --control "${{ inputs.control }}" \
+        tenantguard scan --target "$INPUT_TARGET" --control "$INPUT_CONTROL" \
           --format sarif --sarif-out tenantguard-report.sarif
         code=$?
         set -e
