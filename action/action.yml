@@ -41,14 +41,19 @@ runs:
 
     - name: Install tenantguard
       shell: bash
-      run: go install "github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@${{ inputs.version }}"
+      env:
+        TENANTGUARD_VERSION: ${{ inputs.version }}
+      run: go install "github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@${TENANTGUARD_VERSION}"
 
     - name: Run scan
       id: scan
       shell: bash
+      env:
+        TENANTGUARD_TARGET: ${{ inputs.target }}
+        TENANTGUARD_CONTROL: ${{ inputs.control }}
       run: |
         set +e
-        tenantguard scan --target "${{ inputs.target }}" --control "${{ inputs.control }}" \
+        tenantguard scan --target "${TENANTGUARD_TARGET}" --control "${TENANTGUARD_CONTROL}" \
           --format sarif --sarif-out tenantguard-report.sarif
         code=$?
         set -e
