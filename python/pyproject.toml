@@ -28,7 +28,14 @@ classifiers = [
   "Topic :: Security",
   "Topic :: Utilities",
 ]
-dependencies = []
+dependencies = [
+  # Pinned to the 4.x line: cli.py's signature-verification code relies on a
+  # documented-but-internal Verifier attribute (`_rekor`) for handling
+  # detached checksums.txt.sig/.pem materials, the same mechanism
+  # sigstore-python's own CLI uses internally for this case. Widen the upper
+  # bound only after re-verifying that internal surface against a new major.
+  "sigstore>=4.0,<5",
+]
 
 [project.optional-dependencies]
 dev = [
