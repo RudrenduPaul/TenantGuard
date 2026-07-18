@@ -11,25 +11,36 @@
 ## Install
 
 ```
+npm install -g tenantguard
+```
+
+This is the recommended install today. The top-level `tenantguard` npm package now publishes; it pulls in the matching platform binary as an npm `optionalDependency` (cosign-verified at publish time, so there's no separate verification step for you) and puts a `tenantguard` command on your `PATH`.
+
+Live platform coverage as of this writing: macOS on Intel and Apple Silicon, Linux on x64 and arm64, and Windows on arm64. Windows on x64 does not currently work through npm: the `tenantguard-win32-x64` package name is presently occupied by an npm security-holding placeholder instead of the real binary package, so `npm install -g tenantguard` will complete on a Windows x64 machine but running `tenantguard` will fail with a "platform package is not installed" error. Use `go install` below on Windows x64 until that's resolved.
+
+```
 go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@v0.1.1
 ```
 
-The top-level `tenantguard` npm package (the one that would make `npm install -g tenantguard` and `npx tenantguard` work) is **not yet published** on the npm registry. It exists in this repo (`npm/tenantguard/`) and is ready to ship, but publishing is currently blocked by npm's anti-abuse heuristics on a new package name; a support ticket is open with npm. Running `npm install -g tenantguard` or `npx tenantguard` today fails with a registry 404.
+`go install` works on every platform Go supports and doesn't depend on any registry publish state, so it's the fallback if your platform isn't covered above.
 
-What **is** live on npm today are the four platform binary packages the top-level package will depend on once it ships (`tenantguard-darwin-x64`, `tenantguard-darwin-arm64`, `tenantguard-linux-x64`, `tenantguard-linux-arm64`, all v0.1.1). You can install one directly and run the binary it contains, no `go install` or Homebrew required:
+You can also skip the top-level package and install a single platform binary package directly:
 
 ```
-npm install tenantguard-darwin-arm64   # swap for your platform: darwin-x64, linux-x64, linux-arm64
+npm install tenantguard-darwin-arm64   # swap for your platform: darwin-x64, linux-x64, linux-arm64, win32-arm64
 ./node_modules/tenantguard-darwin-arm64/bin/tenantguard scan --demo
 ```
 
-This works today, verified end-to-end, but it is not the ergonomic path: there is no global `tenantguard` command on your `PATH` until the top-level package publishes. Until then, `go install` above is the recommended install method. Windows platform packages (`tenantguard-win32-x64`, `tenantguard-win32-arm64`) are not yet published either.
+### Python (pip / uvx)
+
+A PyPI package, `tenantguard-cli`, lives in this repo under `python/` and is built and tested in CI. It is not live on PyPI yet, a one-time maintainer registration step is still pending, so `pip install tenantguard-cli` and `uvx tenantguard-cli` both 404 today. Coming soon. Once it publishes, it downloads and runs the same GitHub Releases binary the npm packages use, verifying the release's SHA-256 `checksums.txt` on first run and caching the verified binary locally after that. That's a different trust boundary than the npm packages, which embed a cosign-verified binary at publish time and need no runtime download at all; the PyPI wrapper's checksum check is the equivalent guarantee for a path that has to fetch the binary on the end user's machine instead.
 
 ## Table of Contents
 
 - [Features](#features)
 - [Quickstart](#quickstart)
 - [CLI Reference](#cli-reference)
+- [MCP server (agent-native usage)](#mcp-server-agent-native-usage)
 - [How TenantGuard compares](#how-tenantguard-compares)
 - [What is TenantGuard and why does it exist](#what-is-tenantguard-and-why-does-it-exist)
 - [FAQ](#faq)
@@ -83,6 +94,7 @@ Other verified capabilities:
 - **Provisional HIPAA citations** on every finding (`--control hipaa`), mapped per rule, marked provisional (see [FAQ](#faq)).
 - **Zero-setup demo mode** (`--demo`) that scans a bundled synthetic deployment, no target config required.
 - **GitHub Action** (`action/action.yml`) that installs a pinned version via `go install` and uploads the SARIF report automatically.
+- **MCP server mode** (`tenantguard mcp`) that exposes the same scan engine as a tool an AI agent can call directly over stdio, instead of only through a human typing `tenantguard scan`. See [MCP server (agent-native usage)](#mcp-server-agent-native-usage) below.
 
 ## Quickstart
 
@@ -174,10 +186,11 @@ tenantguard scan --target ./deployment --format json
 
 ## CLI Reference
 
-TenantGuard is CLI-only: there is a single subcommand, `scan`. There is no top-level `--help` or `--version` flag; running `tenantguard` with no arguments, `tenantguard --help`, or any first argument other than `scan` prints the usage line below to stderr and exits `2`:
+TenantGuard has two subcommands: `scan` (the audit itself) and `mcp` (runs the same scan engine as an MCP server over stdio, see [MCP server (agent-native usage)](#mcp-server-agent-native-usage)). There is no top-level `--help` or `--version` flag; running `tenantguard` with no arguments, `tenantguard --help`, or any first argument other than `scan` or `mcp` prints the usage lines below to stderr and exits `2`:
 
 ```
 usage: tenantguard scan [--target DIR | --demo] [--format terminal|sarif|json] [--control hipaa]
+       tenantguard mcp
 ```
 
 `tenantguard scan --help` output:
@@ -203,6 +216,43 @@ Exit codes (defined in `cmd/tenantguard/main.go`):
 | `0` | Clean scan, no findings |
 | `1` | Scan ran successfully, findings present |
 | `2` | Scan or usage error |
+
+## MCP server (agent-native usage)
+
+Everything above assumes a human typing `tenantguard scan` at a terminal. TenantGuard also runs as an MCP server, so an AI agent (a coding assistant, an ops agent, anything that speaks the Model Context Protocol) can call the scan engine directly as a tool call, instead of shelling out to the CLI and parsing text.
+
+```
+tenantguard mcp
+```
+
+This starts an MCP server on stdio and blocks until the client disconnects, the same way any other stdio-based MCP server runs under its client's process supervision. It takes no flags or positional arguments. Under the hood it's a thin protocol adapter (`internal/mcpserver`) over the exact same `internal/collector` -> `internal/policy` -> `internal/compliance` -> `internal/report` pipeline the CLI's `scan` subcommand runs; there's no separate rule-evaluation logic to keep in sync.
+
+It exposes a single tool, `scan`, with three arguments that mirror the CLI's own flags:
+
+| Argument | Maps to | Notes |
+|---|---|---|
+| `target` | `--target` | Required. Path to the deployment config directory to scan. |
+| `format` | `--format` | Optional. `json`, `sarif`, or `terminal`. Defaults to `json` for MCP (the CLI itself defaults to `terminal`), since a calling agent almost always wants structured output, not a human-formatted report. |
+| `control` | `--control` | Optional. Only `hipaa` is recognized today; an empty value also defaults to `hipaa`, matching the CLI. |
+
+For `json` and `sarif` output, the result is returned both as text and as MCP `StructuredContent`, so a client that wants to read fields directly (`rule_id`, `status`, `file`, `line`) doesn't have to re-parse the text block itself. Tool-level failures (a bad target path, a policy load error) come back as a normal MCP error result, not a protocol-level failure, so a calling agent can handle "scan failed" the same way it handles any other failed tool call.
+
+To register TenantGuard with an MCP-compatible client such as Claude Desktop, add it to the client's server config:
+
+```json
+{
+  "mcpServers": {
+    "tenantguard": {
+      "command": "tenantguard",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+This assumes `tenantguard` is already on your `PATH` (see [Install](#install)). If you installed it somewhere else, replace `"command"` with the full path to the binary.
+
+Before this shipped, the only way to run a scan was a human invoking the CLI directly. With `tenantguard mcp`, an agent can call `scan` as a tool, get structured findings back, and act on them in the same session, without a person reading terminal output and typing the next command by hand.
 
 ## How TenantGuard compares
 
@@ -250,10 +300,16 @@ Yes. `--format sarif --sarif-out <file>` produces a schema-valid SARIF 2.1.0 doc
 Yes, SARIF is a real, standard, machine-parseable format, and it is the right choice for CI/code-scanning integration. `--format json` exists for a different consumer: a script or agent that wants to parse `rule_id`/`status`/`file`/`line` directly, without walking SARIF's tool/run/rule/taxonomy object model first. It also reports every PASS alongside every FAIL, which SARIF deliberately does not (SARIF results represent problems found, not a full checklist), so a caller can answer "what did you check" and not just "what did you flag" from one document.
 
 **What do the CLI exit codes mean?**
-`0` is a clean scan with no findings, `1` means the scan ran successfully and found violations, and `2` is a scan or usage error (including running `tenantguard` with no subcommand, or any subcommand other than `scan`).
+`0` is a clean scan with no findings, `1` means the scan ran successfully and found violations, and `2` is a scan or usage error (including running `tenantguard` with no subcommand, or any subcommand other than `scan` or `mcp`).
 
 **Is there an npm package?**
-The top-level `tenantguard` package (the one behind `npm install -g tenantguard` / `npx tenantguard`) is not yet published; publishing is currently blocked by npm's anti-abuse heuristics on a new package name, with a support ticket open. The four platform binary packages it will depend on (`tenantguard-darwin-x64`, `tenantguard-darwin-arm64`, `tenantguard-linux-x64`, `tenantguard-linux-arm64`) are already live on the registry and installable directly today. See [Install](#install) above for the working command.
+Yes, `npm install -g tenantguard` is live and is the recommended install path. It depends on a matching platform binary package as an npm `optionalDependency`; five of the six platform packages are live (macOS x64/arm64, Linux x64/arm64, Windows arm64). Windows x64 is the one exception: the `tenantguard-win32-x64` name is currently occupied by an npm security-holding placeholder rather than the real binary package, so `tenantguard` won't run there via npm until that's resolved. See [Install](#install) above.
+
+**Is there a PyPI package?**
+One exists in this repo (`tenantguard-cli` under `python/`, built and tested in CI) but it hasn't completed its one-time PyPI registration yet, so `pip install tenantguard-cli` 404s as of this writing. See [Install](#install) above.
+
+**Can an AI agent run TenantGuard directly, without a human typing CLI commands?**
+Yes, via `tenantguard mcp`, which starts an MCP server on stdio exposing the scan engine as a `scan` tool. See [MCP server (agent-native usage)](#mcp-server-agent-native-usage) above for the exact client config and tool arguments.
 
 **Is TenantGuard a library I can import into my own Go program?**
 No, not currently. Everything outside `cmd/tenantguard` (the collector, compliance mapping, demo fixture, policy engine, and report formatting) lives under `internal/`, which Go's own tooling makes non-importable from outside this module. TenantGuard is distributed as a CLI binary and a GitHub Action, not an importable Go package.
