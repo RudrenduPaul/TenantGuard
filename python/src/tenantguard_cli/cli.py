@@ -2,24 +2,35 @@
 
 On first invocation for a given (package version, platform, arch), this
 downloads the matching TenantGuard release archive from GitHub Releases,
-verifies it against the release's checksums.txt (SHA-256), extracts the
-binary into a local cache directory, then execs it -- forwarding argv,
-stdio, and exit code unchanged. Subsequent invocations reuse the cached
-binary; no network access happens once it's cached.
+verifies checksums.txt's Sigstore signature (keyless, GitHub Actions OIDC)
+before trusting any digest inside it, verifies the archive against that
+digest (SHA-256), extracts the binary into a local cache directory, then
+execs it -- forwarding argv, stdio, and exit code unchanged. Subsequent
+invocations reuse the cached binary; no network access happens once it's
+cached.
 
-This intentionally does not perform the cosign/sigstore verification that
-npm/scripts/fetch-binary.js does in this same repo: that script runs only
-at *publish* time, on the maintainer's own CI runner, to verify the archive
-before embedding it into the platform npm packages that actually ship to
-end users -- npm end users never run cosign themselves, they get npm
-registry integrity guarantees instead. This package has no such publish-time
-embedding step (a single pure-Python wheel can't hold six platform
-binaries), so the download happens on the *end user's* machine instead. The
-SHA-256 check against checksums.txt, fetched over HTTPS from
-github.com/.../releases, is the trust boundary here -- the same baseline
-used by most Go-binary installer scripts. Users who want the stronger
-cosign-verified path already have it: the Homebrew tap and the npm package
-both embed cosign-verified binaries.
+Signature verification uses the `sigstore` PyPI package (a pure-Python
+Sigstore client, see https://pypi.org/project/sigstore/), not the `cosign`
+CLI binary that npm/scripts/fetch-binary.js shells out to. That script runs
+only at *publish* time, on the maintainer's own CI runner, where installing
+an extra CLI binary is a reasonable ask. This package's download happens on
+the *end user's* machine at first run instead -- a single pure-Python wheel
+can't embed all platform binaries the way npm's per-platform packages can --
+so requiring end users to separately install `cosign` would be a real
+usability regression. sigstore-python avoids that tradeoff: the same
+verification guarantee (checksums.txt must carry a valid Sigstore signature
+from this repo's own release workflow, keyless via GitHub Actions OIDC, with
+certificate identity and issuer checked against the pinned RELEASE_TAG) with
+no extra binary for the end user to install.
+
+checksums.txt.sig and checksums.txt.pem (the same release assets the npm
+script already consumes) are fetched alongside checksums.txt and verified
+BEFORE any digest is parsed out of it. That ordering is what actually closes
+the gap SHA-256-over-HTTPS alone leaves open: if checksums.txt and a
+malicious archive were served together from a single compromised source,
+they'd still agree with each other and pass a bare digest check. Requiring a
+valid signature from the real release workflow first means an attacker would
+also need to forge that signature, not just serve consistent bytes.
 """
 
 from __future__ import annotations
@@ -36,6 +47,13 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+from cryptography.x509 import load_pem_x509_certificate
+from sigstore._internal.rekor import _hashedrekord_from_parts
+from sigstore.hashes import HashAlgorithm, Hashed
+from sigstore.models import Bundle
+from sigstore.verify import Verifier
+from sigstore.verify import policy as sigstore_policy
+
 from . import RELEASE_TAG, __version__
 from .platforms import (
     UnsupportedPlatformError,
@@ -51,6 +69,16 @@ PROJECT_NAME = "tenantguard"
 RELEASE_BASE = f"https://github.com/{REPO}/releases/download/{RELEASE_TAG}"
 USER_AGENT = "tenantguard-cli-pypi-wrapper"
 REQUEST_TIMEOUT_SECONDS = 30
+
+# Same identity/issuer the release workflow (.github/workflows/release.yml)
+# signs checksums.txt with, and that npm/scripts/fetch-binary.js's cosign
+# check already verifies against -- keyless Sigstore signing via GitHub
+# Actions OIDC, scoped to this exact release workflow run for this exact tag.
+SIGSTORE_OIDC_ISSUER = "https://token.actions.githubusercontent.com"
+
+
+def _sigstore_certificate_identity() -> str:
+    return f"https://github.com/{REPO}/.github/workflows/release.yml@refs/tags/{RELEASE_TAG}"
 
 
 def _cache_dir() -> Path:
@@ -84,6 +112,91 @@ def _fetch(url: str) -> bytes:
 
 def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _build_sigstore_verifier() -> Verifier:
+    """Split out so tests can monkeypatch it instead of hitting the real
+    Sigstore trust root / TUF refresh."""
+    return Verifier.production()
+
+
+def _retrieve_sigstore_log_entry(verifier: Verifier, certificate, signature: bytes, hashed: Hashed):
+    """Looks up the Rekor transparency-log entry matching a *detached*
+    signature + certificate pair (i.e. separate .sig/.pem files, the same
+    shape cosign produces and that checksums.txt.sig/.pem already are) --
+    mirrors what sigstore-python's own CLI does internally for this exact
+    "detached materials" case (see sigstore.verify.Verifier's `_rekor`
+    attribute and its "ugly hack needed for verifying detached materials"
+    comment). A `Bundle` built via `Bundle.from_parts` requires this log
+    entry, so it has to be fetched before verification can proceed. Split out
+    so tests can monkeypatch it instead of hitting the real transparency log.
+    """
+    return verifier._rekor.log.entries.retrieve.post(  # noqa: SLF001
+        _hashedrekord_from_parts(certificate, signature, hashed)
+    )
+
+
+def _verify_checksums_signature(checksums_bytes: bytes, cert_pem_bytes: bytes, sig_bytes: bytes) -> None:
+    """Verifies checksums.txt was signed by this repo's own release workflow
+    via Sigstore keyless signing (GitHub Actions OIDC), using the pure-Python
+    `sigstore` library. `cert_pem_bytes`/`sig_bytes` are the raw bytes
+    downloaded from checksums.txt.pem / checksums.txt.sig -- the same release
+    assets npm/scripts/fetch-binary.js's cosign check already consumes.
+
+    Raises RuntimeError on any failure: a certificate that doesn't parse, no
+    matching transparency-log entry, a signature that doesn't verify, or a
+    certificate identity/issuer that doesn't match this exact release
+    workflow run. Must be called, and must succeed, before any digest parsed
+    out of checksums.txt is trusted.
+    """
+    try:
+        certificate = load_pem_x509_certificate(cert_pem_bytes)
+    except ValueError as exc:
+        raise RuntimeError(
+            f"tenantguard-cli: could not parse checksums.txt.pem as a PEM certificate: {exc}"
+        ) from exc
+
+    hashed = Hashed(algorithm=HashAlgorithm.SHA2_256, digest=hashlib.sha256(checksums_bytes).digest())
+    verifier = _build_sigstore_verifier()
+
+    try:
+        log_entry = _retrieve_sigstore_log_entry(verifier, certificate, sig_bytes, hashed)
+    except Exception as exc:
+        raise RuntimeError(
+            "tenantguard-cli: failed to look up checksums.txt's signature in the Sigstore "
+            f"transparency log: {exc}"
+        ) from exc
+
+    if log_entry is None:
+        raise RuntimeError(
+            "tenantguard-cli: no matching Sigstore transparency log entry found for "
+            "checksums.txt.sig/checksums.txt.pem -- refusing to trust checksums.txt."
+        )
+
+    try:
+        bundle = Bundle.from_parts(certificate, sig_bytes, log_entry)
+    except Exception as exc:
+        raise RuntimeError(
+            f"tenantguard-cli: could not assemble a Sigstore bundle for checksums.txt: {exc}"
+        ) from exc
+
+    verification_policy = sigstore_policy.Identity(
+        identity=_sigstore_certificate_identity(),
+        issuer=SIGSTORE_OIDC_ISSUER,
+    )
+
+    try:
+        verifier.verify_artifact(checksums_bytes, bundle, verification_policy)
+    except Exception as exc:
+        raise RuntimeError(
+            f"tenantguard-cli: Sigstore signature verification failed for checksums.txt: {exc}"
+        ) from exc
+
+    print(
+        "tenantguard-cli: sigstore signature verified for checksums.txt "
+        "(keyless, GitHub Actions OIDC)",
+        file=sys.stderr,
+    )
 
 
 def _parse_checksums(text: str) -> dict[str, str]:
@@ -140,10 +253,16 @@ def ensure_binary() -> Path:
     asset_name = archive_name(PROJECT_NAME, goos, goarch)
     archive_url = f"{RELEASE_BASE}/{asset_name}"
     checksums_url = f"{RELEASE_BASE}/checksums.txt"
+    checksums_sig_url = f"{checksums_url}.sig"
+    checksums_cert_url = f"{checksums_url}.pem"
 
     print(f"tenantguard-cli: downloading {archive_url}", file=sys.stderr)
     archive_bytes = _fetch(archive_url)
     checksums_bytes = _fetch(checksums_url)
+    checksums_sig_bytes = _fetch(checksums_sig_url)
+    checksums_cert_bytes = _fetch(checksums_cert_url)
+
+    _verify_checksums_signature(checksums_bytes, checksums_cert_bytes, checksums_sig_bytes)
 
     checksums = _parse_checksums(checksums_bytes.decode("utf-8", errors="replace"))
     expected_digest = checksums.get(asset_name)
