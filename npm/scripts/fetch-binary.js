@@ -14,11 +14,22 @@
  * dependency. This keeps the network fetch out of the end-user install path
  * entirely, which is the whole point of not using a postinstall script here.
  *
- * The download itself is verified against the release's own checksums.txt
- * (SHA-256) before anything is extracted. A checksum mismatch, a missing
- * checksum entry, a failed download, or a missing binary inside the archive
- * all fail loudly (non-zero exit) -- this script never extracts or ships an
- * unverified binary.
+ * The release's checksums.txt is itself cosign-verified (keyless, via GitHub
+ * Actions OIDC) before it is trusted: the release workflow (.github/workflows/
+ * release.yml) signs checksums.txt with `cosign sign-blob` at release time and
+ * publishes checksums.txt.sig / checksums.txt.pem alongside it, so a valid
+ * signature proves checksums.txt was produced by that exact workflow run for
+ * this exact tag, not just that it arrived over HTTPS intact. Only once that
+ * signature checks out is the archive's own SHA-256 (looked up inside the now-
+ * trusted checksums.txt) compared against the downloaded archive.
+ *
+ * A checksum mismatch, a missing checksum entry, a failed download, a missing
+ * binary inside the archive, a missing `cosign` binary on PATH, or a failed
+ * cosign verification all fail loudly (non-zero exit) -- this script never
+ * extracts or ships an unverified binary. Requires `cosign` (https://
+ * docs.sigstore.dev/cosign/installation/) to be installed on the machine that
+ * runs `npm pack`/`npm publish` (prepack only -- see above; end users never
+ * need cosign).
  *
  * Usage: node fetch-binary.js <goos> <goarch> <archive-ext> <binary-name>
  *   e.g. node fetch-binary.js darwin arm64 tar.gz tenantguard
@@ -32,12 +43,17 @@
 const https = require("https");
 const crypto = require("crypto");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const zlib = require("zlib");
+const { spawnSync } = require("child_process");
 
 const RELEASE_TAG = "v0.1.1";
-const RELEASE_BASE = `https://github.com/RudrenduPaul/TenantGuard/releases/download/${RELEASE_TAG}`;
+const REPO = "RudrenduPaul/TenantGuard";
+const RELEASE_BASE = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}`;
 const MAX_REDIRECTS = 5;
+const COSIGN_OIDC_ISSUER = "https://token.actions.githubusercontent.com";
+const COSIGN_CERT_IDENTITY = `https://github.com/${REPO}/.github/workflows/release.yml@refs/tags/${RELEASE_TAG}`;
 
 function fail(message) {
   console.error(`fetch-binary: ${message}`);
@@ -58,6 +74,8 @@ if (ext !== "tar.gz" && ext !== "zip") {
 const archiveName = `tenantguard_${goos}_${goarch}.${ext}`;
 const archiveUrl = `${RELEASE_BASE}/${archiveName}`;
 const checksumsUrl = `${RELEASE_BASE}/checksums.txt`;
+const checksumsSigUrl = `${checksumsUrl}.sig`;
+const checksumsCertUrl = `${checksumsUrl}.pem`;
 
 function get(url, redirectsLeft) {
   if (redirectsLeft === undefined) redirectsLeft = MAX_REDIRECTS;
@@ -99,6 +117,57 @@ function parseChecksums(text) {
     map.set(match[2].trim(), match[1].toLowerCase());
   }
   return map;
+}
+
+// Verifies checksums.txt was signed by this repo's own release workflow via
+// cosign keyless signing (GitHub Actions OIDC), using the cosign CLI's
+// `verify-blob`. certBuf/sigBuf are the raw bytes downloaded from
+// checksums.txt.pem / checksums.txt.sig. Throws on any failure -- a missing
+// cosign binary, a signature that doesn't verify, or an identity/issuer that
+// doesn't match this exact release workflow run.
+function verifyChecksumsSignature(checksumsBuf, certBuf, sigBuf) {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "tenantguard-cosign-"));
+  try {
+    const checksumsPath = path.join(tmpDir, "checksums.txt");
+    const certPath = path.join(tmpDir, "checksums.txt.pem");
+    const sigPath = path.join(tmpDir, "checksums.txt.sig");
+    fs.writeFileSync(checksumsPath, checksumsBuf);
+    fs.writeFileSync(certPath, certBuf);
+    fs.writeFileSync(sigPath, sigBuf);
+
+    const result = spawnSync(
+      "cosign",
+      [
+        "verify-blob",
+        "--certificate",
+        certPath,
+        "--signature",
+        sigPath,
+        "--certificate-identity",
+        COSIGN_CERT_IDENTITY,
+        "--certificate-oidc-issuer",
+        COSIGN_OIDC_ISSUER,
+        checksumsPath,
+      ],
+      { encoding: "utf8" }
+    );
+
+    if (result.error && result.error.code === "ENOENT") {
+      throw new Error(
+        "cosign CLI not found on PATH. Install it (https://docs.sigstore.dev/cosign/installation/) " +
+          "before running prepack -- checksums.txt cannot be trusted without verifying its cosign signature."
+      );
+    }
+    if (result.error) {
+      throw new Error(`failed to run cosign: ${result.error.message}`);
+    }
+    if (result.status !== 0) {
+      const output = `${result.stdout || ""}${result.stderr || ""}`.trim();
+      throw new Error(`cosign verify-blob failed for checksums.txt: ${output || `exit code ${result.status}`}`);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 }
 
 // --- minimal ustar/tar reader: extract a single named entry from a
@@ -176,7 +245,15 @@ function extractFromZip(zipBuf, targetBasename) {
 
 async function main() {
   console.log(`fetch-binary: downloading ${archiveUrl}`);
-  const [archiveBuf, checksumsBuf] = await Promise.all([get(archiveUrl), get(checksumsUrl)]);
+  const [archiveBuf, checksumsBuf, checksumsSigBuf, checksumsCertBuf] = await Promise.all([
+    get(archiveUrl),
+    get(checksumsUrl),
+    get(checksumsSigUrl),
+    get(checksumsCertUrl),
+  ]);
+
+  verifyChecksumsSignature(checksumsBuf, checksumsCertBuf, checksumsSigBuf);
+  console.log("fetch-binary: cosign signature verified for checksums.txt (keyless, GitHub Actions OIDC)");
 
   const checksums = parseChecksums(checksumsBuf.toString("utf8"));
   const expected = checksums.get(archiveName);
