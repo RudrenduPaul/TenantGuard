@@ -12,9 +12,12 @@ import (
 	"io"
 	"os"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/RudrenduPaul/TenantGuard/internal/collector"
 	"github.com/RudrenduPaul/TenantGuard/internal/compliance"
 	"github.com/RudrenduPaul/TenantGuard/internal/demo"
+	"github.com/RudrenduPaul/TenantGuard/internal/mcpserver"
 	"github.com/RudrenduPaul/TenantGuard/internal/policy"
 	"github.com/RudrenduPaul/TenantGuard/internal/report"
 )
@@ -39,12 +42,50 @@ func errf(w io.Writer, format string, args ...any) {
 	_, _ = fmt.Fprintf(w, format, args...)
 }
 
+const usage = "usage: tenantguard scan [--target DIR | --demo] [--format terminal|sarif|json] [--control hipaa]\n" +
+	"       tenantguard mcp\n"
+
 func run(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 || args[0] != "scan" {
-		errf(stderr, "usage: tenantguard scan [--target DIR | --demo] [--format terminal|sarif|json] [--control hipaa]\n")
+	if len(args) == 0 {
+		errf(stderr, usage)
 		return exitScanError
 	}
 
+	switch args[0] {
+	case "scan":
+		return runScan(args, stdout, stderr)
+	case "mcp":
+		return runMCP(args, stderr)
+	default:
+		errf(stderr, usage)
+		return exitScanError
+	}
+}
+
+// runMCP starts an MCP server on stdio, exposing the scan engine as a
+// "scan" tool for AI-agent clients (github.com/modelcontextprotocol/go-sdk).
+// It blocks until the client disconnects (stdin closes) or the process is
+// signaled, matching how any other stdio-based MCP server is expected to
+// run under a client's process supervision.
+func runMCP(args []string, stderr io.Writer) int {
+	fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	if err := fs.Parse(args[1:]); err != nil {
+		return exitScanError
+	}
+	if fs.NArg() > 0 {
+		errf(stderr, "error: tenantguard mcp takes no positional arguments\n")
+		return exitScanError
+	}
+
+	if err := mcpserver.Run(context.Background(), mcpserver.Version(), &mcp.StdioTransport{}); err != nil {
+		errf(stderr, "error: mcp server: %v\n", err)
+		return exitScanError
+	}
+	return exitClean
+}
+
+func runScan(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	target := fs.String("target", "", "path to the deployment config directory to scan")
