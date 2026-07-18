@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tenantguard-cli"
+version = "0.1.1"
+description = "PyPI wrapper for TenantGuard, a tenant-isolation security-audit CLI for self-hosted multi-tenant AI-agent platforms. Downloads and runs the official prebuilt Go binary from GitHub Releases."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+authors = [
+  { name = "Rudrendu Paul" },
+]
+keywords = ["security", "tenant-isolation", "multi-tenant", "ai-agent", "sarif", "opa", "rego", "hipaa", "cli"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+  "Topic :: Utilities",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0,<9",
+  "build>=1.0,<2",
+  "twine>=5.0,<7",
+]
+
+[project.urls]
+Homepage = "https://github.com/RudrenduPaul/TenantGuard"
+Repository = "https://github.com/RudrenduPaul/TenantGuard"
+"Bug Tracker" = "https://github.com/RudrenduPaul/TenantGuard/issues"
+Changelog = "https://github.com/RudrenduPaul/TenantGuard/blob/main/CHANGELOG.md"
+"Author - Rudrendu Paul" = "https://github.com/RudrenduPaul"
+
+[project.scripts]
+tenantguard = "tenantguard_cli.cli:main"
+
+[tool.hatch.build]
+# This package lives in a subdirectory (python/) of a larger monorepo whose
+# .git directory is at the repo root, alongside the sibling Go module and npm
+# package. Hatchling's default VCS-aware file source walks up to that root
+# .git and pulls in root-level files (Go sources, npm/, action/, etc.) that
+# have nothing to do with this Python package. ignore-vcs disables that
+# VCS-based default source so only the explicit include/only-include lists
+# below decide what ships.
+ignore-vcs = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tenantguard_cli"]
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+  "src/tenantguard_cli",
+  "tests",
+  "README.md",
+  "LICENSE",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
