@@ -1,6 +1,6 @@
 {
   "name": "tenantguard-cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Tenant-isolation security-audit CLI for self-hosted multi-tenant AI-agent platforms",
   "keywords": [
     "security",

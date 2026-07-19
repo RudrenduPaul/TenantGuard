@@ -6,7 +6,7 @@
 [![Version](https://img.shields.io/badge/version-v0.1.1-blue)](https://github.com/RudrenduPaul/TenantGuard/releases/tag/v0.1.1)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-<!-- TODO: record demo GIF/asciicast of `tenantguard scan --demo` and embed it here -->
+![TenantGuard install and first scan: npm install -g tenantguard, then tenantguard scan --demo, showing real FAIL findings against the bundled synthetic deployment fixture](docs/demo.gif)
 
 ## Install
 
@@ -178,6 +178,8 @@ Scan a real deployment and emit SARIF for code scanning instead:
 tenantguard scan --target ./deployment --format sarif --sarif-out tenantguard-report.sarif
 ```
 
+![TenantGuard writing a SARIF report to disk with tenantguard scan --demo --format sarif --sarif-out, then inspecting one real finding from the file with jq](docs/usage.gif)
+
 Or emit plain JSON, for a script or agent that would rather parse a flat findings array than a SARIF document:
 
 ```
@@ -313,6 +315,9 @@ Yes, via `tenantguard mcp`, which starts an MCP server on stdio exposing the sca
 
 **Is TenantGuard a library I can import into my own Go program?**
 No, not currently. Everything outside `cmd/tenantguard` (the collector, compliance mapping, demo fixture, policy engine, and report formatting) lives under `internal/`, which Go's own tooling makes non-importable from outside this module. TenantGuard is distributed as a CLI binary and a GitHub Action, not an importable Go package.
+
+**Can I use TenantGuard in a commercial or closed-source product?**
+Yes. TenantGuard is licensed under the Apache License 2.0, which permits commercial use, modification, private use, and redistribution, including inside a proprietary or SaaS product, subject to the license's standard notice and attribution terms (retaining the copyright notice and a copy of the license, and marking any modified files). It comes with no warranty, as stated in the license. See [LICENSE](LICENSE) for the full, authoritative terms.
 
 ## Contributing
 
