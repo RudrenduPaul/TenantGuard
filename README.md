@@ -6,17 +6,17 @@
 [![Version](https://img.shields.io/badge/version-v0.1.1-blue)](https://github.com/RudrenduPaul/TenantGuard/releases/tag/v0.1.1)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-![TenantGuard install and first scan: npm install -g tenantguard, then tenantguard scan --demo, showing real FAIL findings against the bundled synthetic deployment fixture](docs/demo.gif)
+![TenantGuard install and first scan: npm install -g tenantguard-cli, then tenantguard scan --demo, showing real FAIL findings against the bundled synthetic deployment fixture](docs/demo.gif)
 
 ## Install
 
 ```
-npm install -g tenantguard
+npm install -g tenantguard-cli
 ```
 
-This is the recommended install today. The top-level `tenantguard` npm package now publishes; it pulls in the matching platform binary as an npm `optionalDependency` (cosign-verified at publish time, so there's no separate verification step for you) and puts a `tenantguard` command on your `PATH`.
+This is the recommended install today. The `tenantguard-cli` npm package now publishes (renamed from the old plain `tenantguard`, which is deprecated); it pulls in the matching platform binary as an npm `optionalDependency` (cosign-verified at publish time, so there's no separate verification step for you) and puts a `tenantguard` command on your `PATH`.
 
-Live platform coverage as of this writing: macOS on Intel and Apple Silicon, Linux on x64 and arm64, and Windows on arm64. Windows on x64 does not currently work through npm: the `tenantguard-win32-x64` package name is presently occupied by an npm security-holding placeholder instead of the real binary package, so `npm install -g tenantguard` will complete on a Windows x64 machine but running `tenantguard` will fail with a "platform package is not installed" error. Use `go install` below on Windows x64 until that's resolved.
+Live platform coverage as of this writing: macOS on Intel and Apple Silicon, Linux on x64 and arm64, and Windows on arm64. Windows on x64 does not currently work through npm: the `tenantguard-win32-x64` package name is presently occupied by an npm security-holding placeholder instead of the real binary package, so `npm install -g tenantguard-cli` will complete on a Windows x64 machine but running `tenantguard` will fail with a "platform package is not installed" error. Use `go install` below on Windows x64 until that's resolved.
 
 ```
 go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@v0.1.1
@@ -305,7 +305,7 @@ Yes, SARIF is a real, standard, machine-parseable format, and it is the right ch
 `0` is a clean scan with no findings, `1` means the scan ran successfully and found violations, and `2` is a scan or usage error (including running `tenantguard` with no subcommand, or any subcommand other than `scan` or `mcp`).
 
 **Is there an npm package?**
-Yes, `npm install -g tenantguard` is live and is the recommended install path. It depends on a matching platform binary package as an npm `optionalDependency`; five of the six platform packages are live (macOS x64/arm64, Linux x64/arm64, Windows arm64). Windows x64 is the one exception: the `tenantguard-win32-x64` name is currently occupied by an npm security-holding placeholder rather than the real binary package, so `tenantguard` won't run there via npm until that's resolved. See [Install](#install) above.
+Yes, `npm install -g tenantguard-cli` is live and is the recommended install path (renamed from the old plain `tenantguard`, which is deprecated). It depends on a matching platform binary package as an npm `optionalDependency`; five of the six platform packages are live (macOS x64/arm64, Linux x64/arm64, Windows arm64). Windows x64 is the one exception: the `tenantguard-win32-x64` name is currently occupied by an npm security-holding placeholder rather than the real binary package, so `tenantguard` won't run there via npm until that's resolved. See [Install](#install) above.
 
 **Is there a PyPI package?**
 One exists in this repo (`tenantguard-cli` under `python/`, built and tested in CI) but it hasn't completed its one-time PyPI registration yet, so `pip install tenantguard-cli` 404s as of this writing. See [Install](#install) above.
