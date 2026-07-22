@@ -9,7 +9,7 @@ TenantGuard is a tenant-isolation security-audit CLI for self-hosted multi-tenan
 Install the main `tenantguard` npm package instead:
 
 ```
-npm install -g tenantguard
+npm install -g tenantguard-cli
 ```
 
 npm resolves this package automatically as an optional dependency when you are on macOS with Apple Silicon, so the right binary lands on your `PATH` without any extra steps.
