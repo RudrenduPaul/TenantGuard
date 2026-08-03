@@ -24,7 +24,7 @@
   "bin": {
     "tenantguard": "bin/tenantguard.js"
   },
-  "files": ["bin/"],
+  "files": ["bin/", "README.md"],
   "engines": {
     "node": ">=16"
   },

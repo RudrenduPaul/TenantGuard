@@ -1,9 +1,20 @@
+import base64
 import hashlib
 
 import pytest
 
 from tenantguard_cli import cli
 from tenantguard_cli.cli import _parse_checksums, _sha256_hex, _verify_checksums_signature
+
+# cosign's `sign-blob --output-certificate/--output-signature` write both
+# files as base64 text (the certificate as base64-of-PEM-armor, the
+# signature as base64-of-raw-DER) -- the same shape the real
+# checksums.txt.pem / checksums.txt.sig release assets have. Fixtures below
+# mirror that so these tests exercise the real base64-decode step
+# `_verify_checksums_signature` now performs, not just the plumbing below it.
+_FAKE_CERT_B64 = base64.b64encode(b"-----BEGIN CERTIFICATE-----")
+_FAKE_SIG_B64 = base64.b64encode(b"signature-bytes")
+_FAKE_SHORT_SIG_B64 = base64.b64encode(b"sig")
 
 
 def test_parse_checksums_standard_format():
@@ -97,7 +108,7 @@ def test_verify_checksums_signature_success_checks_correct_identity_and_issuer(m
     _patch_sigstore_plumbing(monkeypatch, verifier)
 
     # Should not raise.
-    _verify_checksums_signature(b"checksums.txt contents", b"-----BEGIN CERTIFICATE-----", b"signature-bytes")
+    _verify_checksums_signature(b"checksums.txt contents", _FAKE_CERT_B64, _FAKE_SIG_B64)
 
     assert len(verifier.calls) == 1
     checked_input, _checked_bundle, checked_policy = verifier.calls[0]
@@ -117,7 +128,7 @@ def test_verify_checksums_signature_rejects_tampered_checksums(monkeypatch):
     _patch_sigstore_plumbing(monkeypatch, verifier)
 
     with pytest.raises(RuntimeError, match="Sigstore signature verification failed"):
-        _verify_checksums_signature(b"tampered checksums.txt contents", b"-----BEGIN CERTIFICATE-----", b"sig")
+        _verify_checksums_signature(b"tampered checksums.txt contents", _FAKE_CERT_B64, _FAKE_SHORT_SIG_B64)
 
 
 def test_verify_checksums_signature_rejects_wrong_identity_or_issuer(monkeypatch):
@@ -139,7 +150,7 @@ def test_verify_checksums_signature_rejects_wrong_identity_or_issuer(monkeypatch
     _patch_sigstore_plumbing(monkeypatch, verifier)
 
     with pytest.raises(RuntimeError, match="Sigstore signature verification failed"):
-        _verify_checksums_signature(b"checksums.txt contents", b"-----BEGIN CERTIFICATE-----", b"sig")
+        _verify_checksums_signature(b"checksums.txt contents", _FAKE_CERT_B64, _FAKE_SHORT_SIG_B64)
 
     # The policy actually checked was still the pinned identity/issuer, not
     # something looser -- confirms the rejection came from that policy, not
@@ -157,7 +168,7 @@ def test_verify_checksums_signature_rejects_missing_transparency_log_entry(monke
     _patch_sigstore_plumbing(monkeypatch, verifier, log_entry=None)
 
     with pytest.raises(RuntimeError, match="no matching Sigstore transparency log entry"):
-        _verify_checksums_signature(b"checksums.txt contents", b"-----BEGIN CERTIFICATE-----", b"sig")
+        _verify_checksums_signature(b"checksums.txt contents", _FAKE_CERT_B64, _FAKE_SHORT_SIG_B64)
 
     # verify_artifact must never be reached without a log entry to build a bundle from.
     assert verifier.calls == []
@@ -173,5 +184,25 @@ def test_verify_checksums_signature_rejects_unparseable_certificate(monkeypatch)
 
     monkeypatch.setattr(cli, "load_pem_x509_certificate", _raise_value_error)
 
+    not_a_real_cert_b64 = base64.b64encode(b"not a real certificate")
     with pytest.raises(RuntimeError, match="could not parse checksums.txt.pem"):
-        _verify_checksums_signature(b"checksums.txt contents", b"not a real certificate", b"sig")
+        _verify_checksums_signature(b"checksums.txt contents", not_a_real_cert_b64, _FAKE_SHORT_SIG_B64)
+
+
+def test_verify_checksums_signature_rejects_non_base64_certificate():
+    """checksums.txt.pem is downloaded as cosign's base64-of-PEM-armor
+    output (see the module docstring on `_verify_checksums_signature`); if
+    the downloaded bytes aren't valid base64 at all (a corrupt download, or
+    a release asset that was never actually produced by cosign), this must
+    fail loudly with a clear, distinct error before ever reaching the PEM
+    parser -- not surface as a confusing PEM-parse failure."""
+    with pytest.raises(RuntimeError, match="could not base64-decode checksums.txt.pem"):
+        _verify_checksums_signature(b"checksums.txt contents", b"not valid base64!!!", _FAKE_SHORT_SIG_B64)
+
+
+def test_verify_checksums_signature_rejects_non_base64_signature():
+    """Same as above for checksums.txt.sig: cosign writes this as base64 of
+    the raw DER signature, so non-base64 bytes here must also fail loudly
+    and distinctly, before any Sigstore bundle/log-entry lookup is attempted."""
+    with pytest.raises(RuntimeError, match="could not base64-decode checksums.txt.sig"):
+        _verify_checksums_signature(b"checksums.txt contents", _FAKE_CERT_B64, b"not valid base64!!!")

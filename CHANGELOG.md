@@ -17,6 +17,22 @@ All notable changes to this project are documented here.
   the rule-ID list backing that array had not been updated when TA15/TA16
   shipped, so SARIF consumers that key rule metadata off `driver.rules`
   (e.g. some code-scanning UIs) would not resolve those two rule IDs.
+- PyPI wrapper (`tenantguard-cli` on PyPI, `python/src/tenantguard_cli/cli.py`):
+  `checksums.txt.pem` and `checksums.txt.sig` downloaded from GitHub Releases
+  are cosign's base64-encoded output, not raw PEM/DER bytes; the verifier was
+  passing them straight to `load_pem_x509_certificate`/the Sigstore bundle
+  builder without decoding first, so every install failed on first run with
+  `could not parse checksums.txt.pem as a PEM certificate`. Both values are
+  now base64-decoded before use, with regression tests covering the decode
+  failure path. Affects all published versions up to and including 0.1.2;
+  fixed here, pending a new release.
+- npm package (`tenantguard-cli` on npm, `npm/tenantguard/`): the published
+  package directory had no `README.md`, so `registry.npmjs.org` and the
+  npmjs.com package page rendered no description at all. Added.
+- `SECURITY.md` pointed to `security@tenantguard.dev`, a domain that does not
+  exist (NXDOMAIN) -- any report sent there would silently bounce. Switched
+  to GitHub's private vulnerability reporting (enabled on this repository),
+  linked from `SECURITY.md`.
 
 ### Added (original)
 - Initial `tenantguard scan` CLI: five tenant-isolation rules (TA01-TA05), each

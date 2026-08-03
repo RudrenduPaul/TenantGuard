@@ -35,6 +35,8 @@ also need to forge that signature, not just serve consistent bytes.
 
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import io
 import os
@@ -143,12 +145,37 @@ def _verify_checksums_signature(checksums_bytes: bytes, cert_pem_bytes: bytes, s
     downloaded from checksums.txt.pem / checksums.txt.sig -- the same release
     assets npm/scripts/fetch-binary.js's cosign check already consumes.
 
+    cosign's `sign-blob --output-certificate/--output-signature` write both
+    files as base64 text (the certificate as base64-of-PEM-armor, the
+    signature as base64-of-raw-DER), not as the already-decoded bytes a
+    downstream verifier needs. The `cosign` CLI binary decodes this
+    transparently when you pass these files to `cosign verify-blob`, which is
+    why npm/scripts/fetch-binary.js's cosign-based check needs no extra step.
+    This pure-Python path talks to the `sigstore`/`cryptography` libraries
+    directly instead of shelling out to `cosign`, so it must undo that
+    base64 layer itself before parsing the certificate or handing the
+    signature to Sigstore's bundle/log-entry APIs.
+
     Raises RuntimeError on any failure: a certificate that doesn't parse, no
     matching transparency-log entry, a signature that doesn't verify, or a
     certificate identity/issuer that doesn't match this exact release
     workflow run. Must be called, and must succeed, before any digest parsed
     out of checksums.txt is trusted.
     """
+    try:
+        cert_pem_bytes = base64.b64decode(cert_pem_bytes, validate=True)
+    except binascii.Error as exc:
+        raise RuntimeError(
+            f"tenantguard-cli: could not base64-decode checksums.txt.pem: {exc}"
+        ) from exc
+
+    try:
+        sig_bytes = base64.b64decode(sig_bytes, validate=True)
+    except binascii.Error as exc:
+        raise RuntimeError(
+            f"tenantguard-cli: could not base64-decode checksums.txt.sig: {exc}"
+        ) from exc
+
     try:
         certificate = load_pem_x509_certificate(cert_pem_bytes)
     except ValueError as exc:

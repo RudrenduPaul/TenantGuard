@@ -33,7 +33,9 @@ npm install tenantguard-darwin-arm64   # swap for your platform: darwin-x64, lin
 
 ### Python (pip / uvx)
 
-A PyPI package, `tenantguard-cli`, lives in this repo under `python/` and is built and tested in CI. It is not live on PyPI yet, a one-time maintainer registration step is still pending, so `pip install tenantguard-cli` and `uvx tenantguard-cli` both 404 today. Coming soon. Once it publishes, it downloads and runs the same GitHub Releases binary the npm packages use, verifying the release's SHA-256 `checksums.txt` on first run and caching the verified binary locally after that. That's a different trust boundary than the npm packages, which embed a cosign-verified binary at publish time and need no runtime download at all; the PyPI wrapper's checksum check is the equivalent guarantee for a path that has to fetch the binary on the end user's machine instead.
+A PyPI package, `tenantguard-cli`, lives in this repo under `python/` and is built and tested in CI. It downloads and runs the same GitHub Releases binary the npm packages use, verifying the release's SHA-256 `checksums.txt` on first run (itself Sigstore-signature-verified before any digest inside it is trusted) and caching the verified binary locally after that. That's a different trust boundary than the npm packages, which embed a cosign-verified binary at publish time and need no runtime download at all; the PyPI wrapper's checksum check is the equivalent guarantee for a path that has to fetch the binary on the end user's machine instead.
+
+**Known issue:** published PyPI versions up to and including 0.1.2 fail on first run with `could not parse checksums.txt.pem as a PEM certificate` — the wrapper wasn't base64-decoding the cosign-produced certificate/signature release assets before parsing them. The fix is merged to `python/src/tenantguard_cli/cli.py` (with regression tests) but has not yet been cut into a new PyPI release; until a new version is published, `pip install tenantguard-cli` installs but `tenantguard scan --demo` will fail with that error. Track the next release for a fix, or install via `go install`/npm in the meantime.
 
 ## Table of Contents
 
@@ -90,11 +92,11 @@ TenantGuard scans a self-hosted, multi-tenant AI-agent deployment's configuratio
 Other verified capabilities:
 
 - **SARIF 2.1.0 output** (`--format sarif`), schema-valid, with real byte/line locations and messages, ready for `github/codeql-action/upload-sarif` and GitHub code scanning.
-- **Plain JSON output** (`--format json`), a schema-light alternative to SARIF for a script or agent that just wants raw `rule_id`/`status`/`file`/`line` results without SARIF's tool/run/rule/taxonomy object model. Unlike SARIF (which only reports FAIL as a "result"), the JSON mode includes every PASS too, plus a `summary.fail`/`summary.pass` count.
+- **Plain JSON output** (`--format json`), a schema-light alternative to SARIF for a script or agent that just wants raw `rule_id`/`status`/`file`/`line` results without SARIF's tool/run/rule/taxonomy object model. Unlike SARIF (which only reports FAIL as a "result"), the JSON mode includes every PASS too, plus a `summary.fail`/`summary.pass` count. **Merged to `main`, not yet in a tagged release** — see the note under [CLI Reference](#cli-reference).
 - **Provisional HIPAA citations** on every finding (`--control hipaa`), mapped per rule, marked provisional (see [FAQ](#faq)).
 - **Zero-setup demo mode** (`--demo`) that scans a bundled synthetic deployment, no target config required.
 - **GitHub Action** (`action/action.yml`) that installs a pinned version via `go install` and uploads the SARIF report automatically.
-- **MCP server mode** (`tenantguard mcp`) that exposes the same scan engine as a tool an AI agent can call directly over stdio, instead of only through a human typing `tenantguard scan`. See [MCP server (agent-native usage)](#mcp-server-agent-native-usage) below.
+- **MCP server mode** (`tenantguard mcp`) that exposes the same scan engine as a tool an AI agent can call directly over stdio, instead of only through a human typing `tenantguard scan`. **Merged to `main`, not yet in a tagged release.** See [MCP server (agent-native usage)](#mcp-server-agent-native-usage) below for what's needed to run it today.
 
 ## Quickstart
 
@@ -188,7 +190,9 @@ tenantguard scan --target ./deployment --format json
 
 ## CLI Reference
 
-TenantGuard has two subcommands: `scan` (the audit itself) and `mcp` (runs the same scan engine as an MCP server over stdio, see [MCP server (agent-native usage)](#mcp-server-agent-native-usage)). There is no top-level `--help` or `--version` flag; running `tenantguard` with no arguments, `tenantguard --help`, or any first argument other than `scan` or `mcp` prints the usage lines below to stderr and exits `2`:
+TenantGuard has two subcommands: `scan` (the audit itself) and `mcp` (runs the same scan engine as an MCP server over stdio, see [MCP server (agent-native usage)](#mcp-server-agent-native-usage)). There is no top-level `--help` or `--version` flag; running `tenantguard` with no arguments, `tenantguard --help`, or any first argument other than `scan` or `mcp` prints the usage lines below to stderr and exits `2`.
+
+> **Release status:** `--format json` and the `mcp` subcommand shown below are implemented on `main` but are **not yet in the latest tagged release (`v0.1.1`)** — the version installed today via `npm install -g tenantguard-cli`, `pip install tenantguard-cli`, and `go install .../cmd/tenantguard@v0.1.1` all resolve to that same `v0.1.1` binary and only support `--format terminal|sarif`. To use `--format json` or `tenantguard mcp` right now, build from source instead: `go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@main`. Both will ship in the next tagged release; this note will be removed once that release is cut.
 
 ```
 usage: tenantguard scan [--target DIR | --demo] [--format terminal|sarif|json] [--control hipaa]
@@ -220,6 +224,8 @@ Exit codes (defined in `cmd/tenantguard/main.go`):
 | `2` | Scan or usage error |
 
 ## MCP server (agent-native usage)
+
+> **Not yet in a tagged release.** Everything in this section describes `main` branch behavior. Run `go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@main` to get the `mcp` subcommand today; the `v0.1.1` binary installed via the npm/pip/`go install@v0.1.1` paths in [Install](#install) does not have it yet and will print a usage error if you try.
 
 Everything above assumes a human typing `tenantguard scan` at a terminal. TenantGuard also runs as an MCP server, so an AI agent (a coding assistant, an ops agent, anything that speaks the Model Context Protocol) can call the scan engine directly as a tool call, instead of shelling out to the CLI and parsing text.
 
@@ -299,7 +305,7 @@ Yes: `tenantguard scan --target <path-to-deployment-config-dir>`. `--demo` exist
 Yes. `--format sarif --sarif-out <file>` produces a schema-valid SARIF 2.1.0 document with real result locations and messages. The bundled GitHub Action (`action/action.yml`) runs a scan and uploads the SARIF report via `github/codeql-action/upload-sarif` in one step.
 
 **Why does TenantGuard have both `--format sarif` and `--format json`? Isn't SARIF already structured output?**
-Yes, SARIF is a real, standard, machine-parseable format, and it is the right choice for CI/code-scanning integration. `--format json` exists for a different consumer: a script or agent that wants to parse `rule_id`/`status`/`file`/`line` directly, without walking SARIF's tool/run/rule/taxonomy object model first. It also reports every PASS alongside every FAIL, which SARIF deliberately does not (SARIF results represent problems found, not a full checklist), so a caller can answer "what did you check" and not just "what did you flag" from one document.
+Yes, SARIF is a real, standard, machine-parseable format, and it is the right choice for CI/code-scanning integration. `--format json` exists for a different consumer: a script or agent that wants to parse `rule_id`/`status`/`file`/`line` directly, without walking SARIF's tool/run/rule/taxonomy object model first. It also reports every PASS alongside every FAIL, which SARIF deliberately does not (SARIF results represent problems found, not a full checklist), so a caller can answer "what did you check" and not just "what did you flag" from one document. Note: `--format json` is on `main`, not yet in the `v0.1.1` tagged release the npm/pip packages install today — see the note under [CLI Reference](#cli-reference).
 
 **What do the CLI exit codes mean?**
 `0` is a clean scan with no findings, `1` means the scan ran successfully and found violations, and `2` is a scan or usage error (including running `tenantguard` with no subcommand, or any subcommand other than `scan` or `mcp`).
@@ -308,10 +314,10 @@ Yes, SARIF is a real, standard, machine-parseable format, and it is the right ch
 Yes, `npm install -g tenantguard-cli` is live and is the recommended install path (renamed from the old plain `tenantguard`, which is deprecated). It depends on a matching platform binary package as an npm `optionalDependency`; all six platform packages are live (macOS x64/arm64, Linux x64/arm64, Windows x64/arm64). See [Install](#install) above.
 
 **Is there a PyPI package?**
-One exists in this repo (`tenantguard-cli` under `python/`, built and tested in CI) but it hasn't completed its one-time PyPI registration yet, so `pip install tenantguard-cli` 404s as of this writing. See [Install](#install) above.
+Yes, `tenantguard-cli` is live on PyPI (source under `python/`, built and tested in CI). Published versions up to and including 0.1.2 have a known first-run bug (see [Install](#install) above); the fix is merged but not yet released. `go install` or the npm package are reliable in the meantime.
 
 **Can an AI agent run TenantGuard directly, without a human typing CLI commands?**
-Yes, via `tenantguard mcp`, which starts an MCP server on stdio exposing the scan engine as a `scan` tool. See [MCP server (agent-native usage)](#mcp-server-agent-native-usage) above for the exact client config and tool arguments.
+Yes, via `tenantguard mcp`, which starts an MCP server on stdio exposing the scan engine as a `scan` tool. See [MCP server (agent-native usage)](#mcp-server-agent-native-usage) above for the exact client config and tool arguments, and for the note on which install path has this today.
 
 **Is TenantGuard a library I can import into my own Go program?**
 No, not currently. Everything outside `cmd/tenantguard` (the collector, compliance mapping, demo fixture, policy engine, and report formatting) lives under `internal/`, which Go's own tooling makes non-importable from outside this module. TenantGuard is distributed as a CLI binary and a GitHub Action, not an importable Go package.

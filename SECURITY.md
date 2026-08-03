@@ -2,12 +2,15 @@
 
 ## Reporting a vulnerability
 
-Email **security@tenantguard.dev** with a description of the issue and steps to
-reproduce. We aim to acknowledge reports within **48 hours** and to ship a fix or
-mitigation plan within 14 days for confirmed high-severity issues.
+Use GitHub's private vulnerability reporting for this repository: go to the
+[Security tab](https://github.com/RudrenduPaul/TenantGuard/security/advisories/new)
+and click "Report a vulnerability." This opens a private advisory only the
+maintainer can see, with a description of the issue and steps to reproduce. We
+aim to acknowledge reports within **48 hours** and to ship a fix or mitigation
+plan within 14 days for confirmed high-severity issues.
 
-Please do not open a public GitHub issue for security reports. Use email so a fix
-can ship before the details are public.
+Please do not open a public GitHub issue for security reports. Use the private
+advisory flow above so a fix can ship before the details are public.
 
 ## Scope
 

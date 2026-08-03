@@ -18,6 +18,8 @@ or run without installing:
 uvx tenantguard-cli scan --demo
 ```
 
+**Known issue (versions up to and including 0.1.2):** first run fails with `could not parse checksums.txt.pem as a PEM certificate` — the wrapper wasn't base64-decoding the cosign-produced certificate/signature release assets before parsing them. The fix is merged to `src/tenantguard_cli/cli.py` (with regression tests) but not yet in a released version. Use `npm install -g tenantguard-cli` or `go install` in the meantime, or watch for the next PyPI release.
+
 Other distribution channels for TenantGuard: `npm install -g tenantguard-cli`, a Homebrew tap, `go install`, and GitHub Releases directly. See the [main README](https://github.com/RudrenduPaul/TenantGuard#readme) for details on each.
 
 ## Quickstart
@@ -32,7 +34,7 @@ Zero setup: this scans a bundled synthetic deployment and prints real findings, 
 tenantguard scan --target ./deployment --format sarif --sarif-out tenantguard-report.sarif
 ```
 
-Or emit plain JSON, for a script or agent that would rather parse a flat findings array than a SARIF document:
+Or emit plain JSON, for a script or agent that would rather parse a flat findings array than a SARIF document (implemented on `main`, not yet in the tagged release this package downloads — see [CLI Reference](#cli-reference) below):
 
 ```bash
 tenantguard scan --target ./deployment --format json
@@ -52,6 +54,8 @@ TenantGuard scans a self-hosted, multi-tenant AI-agent deployment's configuratio
 ## CLI Reference
 
 TenantGuard has two subcommands: `scan` (the audit itself) and `mcp` (runs the same scan engine as an MCP server over stdio). There is no top-level `--help` or `--version` flag; running `tenantguard` with no arguments, `tenantguard --help`, or any first argument other than `scan` or `mcp` prints the usage lines below to stderr and exits `2`.
+
+> **Release status:** `--format json` and the `mcp` subcommand are implemented on `main` but not yet in a tagged release. This package downloads the binary from the latest tagged GitHub Release, which currently only supports `--format terminal|sarif` and has no `mcp` subcommand. Build from source (`go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@main`) to use either today.
 
 ```
 usage: tenantguard scan [--target DIR | --demo] [--format terminal|sarif|json] [--control hipaa]
@@ -83,6 +87,8 @@ Exit codes:
 | `2` | Scan or usage error |
 
 ## MCP server (agent-native usage)
+
+> **Not yet in a tagged release** (see the note under [CLI Reference](#cli-reference) above). Build from `main` to run `tenantguard mcp` today.
 
 Everything above assumes a human typing `tenantguard scan` at a terminal. TenantGuard also runs as an MCP server, so an AI agent (a coding assistant, an ops agent, anything that speaks the Model Context Protocol) can call the scan engine directly as a tool call, instead of shelling out to the CLI and parsing text.
 
@@ -142,16 +148,16 @@ Every finding is annotated with a related HIPAA Security Rule citation (e.g. Sec
 Yes. `--format sarif --sarif-out <file>` produces a schema-valid SARIF 2.1.0 document with real result locations and messages. The repo's bundled GitHub Action runs a scan and uploads the SARIF report automatically.
 
 **Why does TenantGuard have both `--format sarif` and `--format json`? Isn't SARIF already structured output?**
-Yes, SARIF is a real, standard, machine-parseable format, and it is the right choice for CI/code-scanning integration. `--format json` exists for a different consumer: a script or agent that wants to parse `rule_id`/`status`/`file`/`line` directly, without walking SARIF's tool/run/rule/taxonomy object model first. It also reports every PASS alongside every FAIL, which SARIF deliberately does not.
+Yes, SARIF is a real, standard, machine-parseable format, and it is the right choice for CI/code-scanning integration. `--format json` exists for a different consumer: a script or agent that wants to parse `rule_id`/`status`/`file`/`line` directly, without walking SARIF's tool/run/rule/taxonomy object model first. It also reports every PASS alongside every FAIL, which SARIF deliberately does not. Not yet in a tagged release — see [CLI Reference](#cli-reference) above.
 
 **Does this package need my own API keys or credentials?**
 No. TenantGuard scans a local configuration directory (or, with `--target` pointing at a read-only credentialed admin API, a deployment's live state) and never sends any deployment data, config, or scan payload anywhere. There is no account, API key, or network service this package talks to at scan time, only the one-time binary download from GitHub Releases on first run.
 
 **Is this package safe? How is the downloaded binary verified?**
-Every download is checked against the release's SHA-256 `checksums.txt`, and that checksums file is itself verified via a cosign/Sigstore signature (keyless, GitHub Actions OIDC) before any digest inside it is trusted, closing the gap where a compromised checksums file and a compromised binary could otherwise pass a checksum-only check together. See `src/tenantguard_cli/cli.py` for the exact verification logic.
+Every download is checked against the release's SHA-256 `checksums.txt`, and that checksums file is itself verified via a cosign/Sigstore signature (keyless, GitHub Actions OIDC) before any digest inside it is trusted, closing the gap where a compromised checksums file and a compromised binary could otherwise pass a checksum-only check together. See `src/tenantguard_cli/cli.py` for the exact verification logic. **Note:** published versions up to and including 0.1.2 fail this verification step on every platform due to a base64-decoding bug (see [Install](#install) above); the fix is merged but not yet released.
 
 **Can an AI agent run TenantGuard directly, without a human typing CLI commands?**
-Yes, via `tenantguard mcp`, which starts an MCP server on stdio exposing the scan engine as a `scan` tool. See [MCP server (agent-native usage)](#mcp-server-agent-native-usage) above for the exact client config and tool arguments.
+Yes, via `tenantguard mcp`, which starts an MCP server on stdio exposing the scan engine as a `scan` tool. See [MCP server (agent-native usage)](#mcp-server-agent-native-usage) above for the exact client config, tool arguments, and current release status.
 
 **Is TenantGuard a library I can import into my own Python program?**
 No. This package is a thin binary-fetching wrapper around the real TenantGuard Go binary, not a reimplementation. Everything you'd want to call programmatically is available either via the CLI's `--format json` output or via `tenantguard mcp`'s agent-native interface.
