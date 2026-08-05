@@ -3,7 +3,8 @@
 **Find the tenant-isolation gap in your self-hosted, multi-tenant AI-agent platform before an auditor, or an attacker, does.**
 
 [![CI](https://github.com/RudrenduPaul/TenantGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/TenantGuard/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-v0.1.1-blue)](https://github.com/RudrenduPaul/TenantGuard/releases/tag/v0.1.1)
+[![npm version](https://img.shields.io/npm/v/tenantguard-cli?label=npm)](https://www.npmjs.com/package/tenantguard-cli)
+[![PyPI version](https://img.shields.io/pypi/v/tenantguard-cli?label=PyPI)](https://pypi.org/project/tenantguard-cli/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 ![TenantGuard install and first scan: npm install -g tenantguard-cli, then tenantguard scan --demo, showing real FAIL findings against the bundled synthetic deployment fixture](docs/demo.gif)
@@ -192,7 +193,7 @@ tenantguard scan --target ./deployment --format json
 
 TenantGuard has two subcommands: `scan` (the audit itself) and `mcp` (runs the same scan engine as an MCP server over stdio, see [MCP server (agent-native usage)](#mcp-server-agent-native-usage)). There is no top-level `--help` or `--version` flag; running `tenantguard` with no arguments, `tenantguard --help`, or any first argument other than `scan` or `mcp` prints the usage lines below to stderr and exits `2`.
 
-> **Release status:** `--format json` and the `mcp` subcommand shown below are implemented on `main` but are **not yet in the latest tagged release (`v0.1.1`)** — the version installed today via `npm install -g tenantguard-cli`, `pip install tenantguard-cli`, and `go install .../cmd/tenantguard@v0.1.1` all resolve to that same `v0.1.1` binary and only support `--format terminal|sarif`. To use `--format json` or `tenantguard mcp` right now, build from source instead: `go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@main`. Both will ship in the next tagged release; this note will be removed once that release is cut.
+> **Release status:** `--format json` and the `mcp` subcommand shown below are implemented on `main` but are **not yet in the latest published version (`0.1.3`)** — confirmed by running the live `npm install -g tenantguard-cli` and `pip install tenantguard-cli` binaries, both of which still only support `--format terminal|sarif`. `go install .../cmd/tenantguard@v0.1.1` resolves to an older, separately tagged binary (no `v0.1.3` GitHub release has been cut yet) with the same limitation. To use `--format json` or `tenantguard mcp` right now, build from source instead: `go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@main`. Both will ship once a matching tagged release is cut; this note will be removed then.
 
 ```
 usage: tenantguard scan [--target DIR | --demo] [--format terminal|sarif|json] [--control hipaa]
@@ -225,7 +226,7 @@ Exit codes (defined in `cmd/tenantguard/main.go`):
 
 ## MCP server (agent-native usage)
 
-> **Not yet in a tagged release.** Everything in this section describes `main` branch behavior. Run `go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@main` to get the `mcp` subcommand today; the `v0.1.1` binary installed via the npm/pip/`go install@v0.1.1` paths in [Install](#install) does not have it yet and will print a usage error if you try.
+> **Not yet in a published or tagged release.** Everything in this section describes `main` branch behavior. Run `go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@main` to get the `mcp` subcommand today; the `0.1.3` npm/pip packages and the `v0.1.1` `go install` binary in [Install](#install) do not have it yet and will print a usage error if you try.
 
 Everything above assumes a human typing `tenantguard scan` at a terminal. TenantGuard also runs as an MCP server, so an AI agent (a coding assistant, an ops agent, anything that speaks the Model Context Protocol) can call the scan engine directly as a tool call, instead of shelling out to the CLI and parsing text.
 
@@ -266,7 +267,7 @@ Before this shipped, the only way to run a scan was a human invoking the CLI dir
 
 | Tool | Focus | Multi-tenant AI-agent aware | SARIF output | Rule count | Project maturity |
 |---|---|---|---|---|---|
-| **TenantGuard** | Tenant-isolation config auditing for self-hosted multi-agent platforms | Yes, purpose-built for this one surface | Yes, verified (SARIF 2.1.0) | 16, all scoped to tenant isolation | v0.1.1, two tagged releases |
+| **TenantGuard** | Tenant-isolation config auditing for self-hosted multi-agent platforms | Yes, purpose-built for this one surface | Yes, verified (SARIF 2.1.0) | 16, all scoped to tenant isolation | npm/PyPI 0.1.3; two GitHub-tagged releases (v0.1.0, v0.1.1) |
 | [Checkov](https://github.com/bridgecrewio/checkov) | General-purpose IaC/cloud misconfiguration scanner (Terraform, CloudFormation, Kubernetes, Dockerfile, and more) | No, README makes no reference to multi-tenant AI-agent platforms or tenant-isolation checks | Yes, verified (`-o sarif`) | 1,000+, general cloud/IaC policies | 8.9k GitHub stars, long-established, actively maintained |
 | [Conftest](https://github.com/open-policy-agent/conftest) | Reference OPA/Rego policy-testing tool for structured config data (18+ input formats) | No, the generic Rego test harness other tools build policy packs on top of; no built-in tenant-isolation or AI-agent rule pack | Yes, verified (`-o sarif`, SARIF 2.1.0) | 0 built-in (a policy-testing engine, not a rule pack) | Long-established reference OPA project, actively maintained |
 | [PolicyGuard](https://github.com/ToluGIT/policyguard) | Terraform/OpenTofu AWS/Azure misconfiguration scanner (Go + OPA/Rego, Cobra CLI, sandboxed OPA engine) | No, narrowly scoped to Terraform/OpenTofu AWS/Azure resources; no mention of multi-tenant systems or AI-agent platforms | Yes, verified (SARIF 2.1.0 with stable fingerprints + CWE tags) | 15+ AWS/Azure resource checks | 1 star, 2 forks, 4 releases (v0.3.1) |
@@ -305,7 +306,7 @@ Yes: `tenantguard scan --target <path-to-deployment-config-dir>`. `--demo` exist
 Yes. `--format sarif --sarif-out <file>` produces a schema-valid SARIF 2.1.0 document with real result locations and messages. The bundled GitHub Action (`action/action.yml`) runs a scan and uploads the SARIF report via `github/codeql-action/upload-sarif` in one step.
 
 **Why does TenantGuard have both `--format sarif` and `--format json`? Isn't SARIF already structured output?**
-Yes, SARIF is a real, standard, machine-parseable format, and it is the right choice for CI/code-scanning integration. `--format json` exists for a different consumer: a script or agent that wants to parse `rule_id`/`status`/`file`/`line` directly, without walking SARIF's tool/run/rule/taxonomy object model first. It also reports every PASS alongside every FAIL, which SARIF deliberately does not (SARIF results represent problems found, not a full checklist), so a caller can answer "what did you check" and not just "what did you flag" from one document. Note: `--format json` is on `main`, not yet in the `v0.1.1` tagged release the npm/pip packages install today — see the note under [CLI Reference](#cli-reference).
+Yes, SARIF is a real, standard, machine-parseable format, and it is the right choice for CI/code-scanning integration. `--format json` exists for a different consumer: a script or agent that wants to parse `rule_id`/`status`/`file`/`line` directly, without walking SARIF's tool/run/rule/taxonomy object model first. It also reports every PASS alongside every FAIL, which SARIF deliberately does not (SARIF results represent problems found, not a full checklist), so a caller can answer "what did you check" and not just "what did you flag" from one document. Note: `--format json` is on `main`, not yet in the `0.1.3` version the npm/pip packages install today — see the note under [CLI Reference](#cli-reference).
 
 **What do the CLI exit codes mean?**
 `0` is a clean scan with no findings, `1` means the scan ran successfully and found violations, and `2` is a scan or usage error (including running `tenantguard` with no subcommand, or any subcommand other than `scan` or `mcp`).
