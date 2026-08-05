@@ -1,7 +1,7 @@
 {
   "name": "tenantguard-cli",
-  "version": "0.1.3",
-  "description": "Tenant-isolation security-audit CLI for self-hosted multi-tenant AI-agent platforms",
+  "version": "0.1.4",
+  "description": "CLI security scanner for self-hosted multi-tenant AI-agent platforms. 16 fail-closed OPA/Rego rules catch tenant-isolation defects (sandbox scoping, SSRF, cross-tenant cron/auth). SARIF and MCP output for CI and AI agents.",
   "keywords": [
     "security",
     "tenant-isolation",
@@ -10,7 +10,14 @@
     "sarif",
     "opa",
     "rego",
-    "hipaa"
+    "hipaa",
+    "cli",
+    "mcp",
+    "policy-as-code",
+    "devsecops",
+    "compliance",
+    "go",
+    "agentic-ai"
   ],
   "license": "Apache-2.0",
   "homepage": "https://github.com/RudrenduPaul/TenantGuard",
