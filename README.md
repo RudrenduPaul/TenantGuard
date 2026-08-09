@@ -1,11 +1,21 @@
 # TenantGuard
 
-**Find the tenant-isolation gap in your self-hosted, multi-tenant AI-agent platform before an auditor, or an attacker, does.**
-
 [![CI](https://github.com/RudrenduPaul/TenantGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/TenantGuard/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/tenantguard-cli?label=npm)](https://www.npmjs.com/package/tenantguard-cli)
 [![PyPI version](https://img.shields.io/pypi/v/tenantguard-cli?label=PyPI)](https://pypi.org/project/tenantguard-cli/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
+<p align="center">
+  <a href="#install">Install</a> •
+  <a href="#quickstart">Quickstart</a> •
+  <a href="#features">Features</a> •
+  <a href="#cli-reference">CLI Reference</a> •
+  <a href="#mcp-server-agent-native-usage">MCP Server</a> •
+  <a href="#how-tenantguard-compares">Compare</a> •
+  <a href="#faq">FAQ</a>
+</p>
+
+**Find the tenant-isolation gap in your self-hosted, multi-tenant AI-agent platform before an auditor, or an attacker, does.**
 
 ![TenantGuard install and first scan: npm install -g tenantguard-cli, then tenantguard scan --demo, showing real FAIL findings against the bundled synthetic deployment fixture](docs/demo.gif)
 
@@ -37,67 +47,6 @@ npm install tenantguard-darwin-arm64   # swap for your platform: darwin-x64, lin
 A PyPI package, `tenantguard-cli`, lives in this repo under `python/` and is built and tested in CI. It downloads and runs the same GitHub Releases binary the npm packages use, verifying the release's SHA-256 `checksums.txt` on first run (itself Sigstore-signature-verified before any digest inside it is trusted) and caching the verified binary locally after that. That's a different trust boundary than the npm packages, which embed a cosign-verified binary at publish time and need no runtime download at all; the PyPI wrapper's checksum check is the equivalent guarantee for a path that has to fetch the binary on the end user's machine instead.
 
 PyPI versions up to and including 0.1.2 shipped a bug that made `pip install tenantguard-cli` succeed but `tenantguard scan --demo` fail on first run with `could not parse checksums.txt.pem as a PEM certificate` (the wrapper wasn't base64-decoding the cosign-produced certificate/signature release assets before parsing them). That is fixed in `tenantguard-cli` 0.1.3, published to PyPI on 2026-08-03; `pip install tenantguard-cli` now installs a working tool with no extra steps.
-
-## Table of Contents
-
-- [Features](#features)
-- [Quickstart](#quickstart)
-- [CLI Reference](#cli-reference)
-- [MCP server (agent-native usage)](#mcp-server-agent-native-usage)
-- [How TenantGuard compares](#how-tenantguard-compares)
-- [What is TenantGuard and why does it exist](#what-is-tenantguard-and-why-does-it-exist)
-- [FAQ](#faq)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Features
-
-TenantGuard scans a self-hosted, multi-tenant AI-agent deployment's configuration against 16 rules, each derived from a real, confirmed tenant-isolation failure mode. Every rule is fail-closed: an undeclared or ambiguous setting is a violation, not a silent pass.
-
-### Tenant isolation boundaries
-
-| Rule | What it catches |
-|---|---|
-| **TA01** | A sandbox/workspace mount is a violation unless its path carries the `${TENANT_ID}` scoping placeholder or `scoped_per_tenant` is explicitly declared true. Maps to goclaw#1163. |
-| **TA03** | A cron binding's `target_agent` must belong to the tenant that declared the binding; a dangling or cross-tenant reference fails closed. Maps to goclaw#1217. |
-| **TA11** | Flags two `channel_instances` entries that share the same `device_session_id` but declare different tenants (e.g. a shared WhatsApp device row). Maps to goclaw#1064/#1065. |
-| **TA14** | A per-agent resource profile (browser/container) is a violation unless its path contains the `${TENANT_ID}` placeholder. Maps to goclaw#778. |
-| **TA15** | Flags a `channel_instances` entry that doesn't explicitly declare `reload_strategy: differential`; an undeclared value or `full` both mean any single create/update/delete on that entry triggers a destructive full stop/restart of every running channel instance across every tenant. Trusts the deployment's own declaration (TenantGuard cannot verify the real loader actually diffs by fingerprint). Maps to goclaw#1147. |
-
-### Network and credential exposure
-
-| Rule | What it catches |
-|---|---|
-| **TA02** | Flags a saved MCP tool URL targeting a private/loopback/reserved address, using real `net.cidr_contains` on a literal or DNS-resolved IP (not string matching), unless the deployment declares both `validates_private` and `pins_resolved_ip` (or the host is explicitly allowlisted). Documents the DNS-rebinding/TOCTOU limitation explicitly. Maps to goclaw#1070. |
-| **TA04** | Flags an exec tool that denies direct env-dump reads but not indirect reads (e.g. `jq $ENV`), and independently flags any tool with `allow_chain_exec: true`, since credential env vars leak to every command in a shell operator chain. Maps to goclaw#1227 and goclaw#1033. |
-| **TA08** | A provider config is a violation unless it declares a recognized strong-encryption algorithm (currently only `aes-256-gcm`) for stored OAuth/credential tokens. Maps to goclaw#65. |
-| **TA16** | Flags a provider (e.g. litellm, bifrost) connection URL targeting a private/loopback/reserved address, using the same `net.cidr_contains`-based logic TA02 applies to MCP tools, unless the deployment declares both `validates_private` and `pins_resolved_ip` (or the host is explicitly allowlisted). Maps to goclaw#1430. |
-
-### Execution and approval hardening
-
-| Rule | What it catches |
-|---|---|
-| **TA05** | An "allow-always" exec approval keyed on basename alone, not a full path, is a violation, since it can be reused against a different executable sharing that basename. Maps to goclaw#1216. |
-| **TA07** | Flags root-by-default execution, full host-environment passthrough, tmpfs mounts missing `noexec`/`nosuid`/`nodev`, or any dangerous Linux capability added (`SETUID`, `SETGID`, `CHOWN`, `SYS_ADMIN`, `DAC_OVERRIDE`, `NET_ADMIN`, `SYS_PTRACE`). Maps to goclaw#1014, #1015, #524. |
-| **TA09** | A deployment must explicitly declare `sandbox.on_unavailable: fail_closed`; an undeclared value is treated as a violation, not a silent pass. Maps to goclaw#246. |
-
-### Identity, audit, and recovery
-
-| Rule | What it catches |
-|---|---|
-| **TA06** | A cron binding whose config doesn't declare `captures_creator_identity` is a violation; without it, a group-context job fires under a `system` identity instead of the real human creator. Maps to goclaw#1129. |
-| **TA12** | Deployment-level check: a violation if `owner_ids` is empty or no recovery/reset command is declared, risking permanent operator lockout. Maps to goclaw#954. |
-| **TA13** | Deployment-level check: a violation if `bridge_hmac_enabled` or `bridge_context_headers_signed` is not declared true; a missing declaration defaults to unsigned and fails, never silently passes. Maps to goclaw#91. |
-| **TA10** | Best-effort, static-config proxy: flags an agent whose entry doesn't explicitly declare `has_workspace_restriction_override` or `has_sandbox_config_override`. Maps to goclaw#145. |
-
-Other verified capabilities:
-
-- **SARIF 2.1.0 output** (`--format sarif`), schema-valid, with real byte/line locations and messages, ready for `github/codeql-action/upload-sarif` and GitHub code scanning.
-- **Plain JSON output** (`--format json`), a schema-light alternative to SARIF for a script or agent that just wants raw `rule_id`/`status`/`file`/`line` results without SARIF's tool/run/rule/taxonomy object model. Unlike SARIF (which only reports FAIL as a "result"), the JSON mode includes every PASS too, plus a `summary.fail`/`summary.pass` count. **Merged to `main`, not yet in a tagged release.** See the note under [CLI Reference](#cli-reference).
-- **Provisional HIPAA citations** on every finding (`--control hipaa`), mapped per rule, marked provisional (see [FAQ](#faq)).
-- **Zero-setup demo mode** (`--demo`) that scans a bundled synthetic deployment, no target config required.
-- **GitHub Action** (`action/action.yml`) that installs a pinned version via `go install` and uploads the SARIF report automatically.
-- **MCP server mode** (`tenantguard mcp`) that exposes the same scan engine as a tool an AI agent can call directly over stdio, instead of only through a human typing `tenantguard scan`. **Merged to `main`, not yet in a tagged release.** See [MCP server (agent-native usage)](#mcp-server-agent-native-usage) below for what's needed to run it today.
 
 ## Quickstart
 
@@ -191,11 +140,61 @@ tenantguard scan --target ./deployment --format json
 
 ![TenantGuard scan --format json output showing the flat findings array for a script or agent to parse](docs/demo-3-json-output.gif)
 
+## Features
+
+TenantGuard scans a self-hosted, multi-tenant AI-agent deployment's configuration against 16 rules, each derived from a real, confirmed tenant-isolation failure mode. Every rule is fail-closed: an undeclared or ambiguous setting is a violation, not a silent pass.
+
+### Tenant isolation boundaries
+
+| Rule | What it catches |
+|---|---|
+| **TA01** | A sandbox/workspace mount is a violation unless its path carries the `${TENANT_ID}` scoping placeholder or `scoped_per_tenant` is explicitly declared true. Maps to goclaw#1163. |
+| **TA03** | A cron binding's `target_agent` must belong to the tenant that declared the binding; a dangling or cross-tenant reference fails closed. Maps to goclaw#1217. |
+| **TA11** | Flags two `channel_instances` entries that share the same `device_session_id` but declare different tenants (e.g. a shared WhatsApp device row). Maps to goclaw#1064/#1065. |
+| **TA14** | A per-agent resource profile (browser/container) is a violation unless its path contains the `${TENANT_ID}` placeholder. Maps to goclaw#778. |
+| **TA15** | Flags a `channel_instances` entry that doesn't explicitly declare `reload_strategy: differential`; an undeclared value or `full` both mean any single create/update/delete on that entry triggers a destructive full stop/restart of every running channel instance across every tenant. Trusts the deployment's own declaration (TenantGuard cannot verify the real loader actually diffs by fingerprint). Maps to goclaw#1147. |
+
+### Network and credential exposure
+
+| Rule | What it catches |
+|---|---|
+| **TA02** | Flags a saved MCP tool URL targeting a private/loopback/reserved address, using real `net.cidr_contains` on a literal or DNS-resolved IP (not string matching), unless the deployment declares both `validates_private` and `pins_resolved_ip` (or the host is explicitly allowlisted). Documents the DNS-rebinding/TOCTOU limitation explicitly. Maps to goclaw#1070. |
+| **TA04** | Flags an exec tool that denies direct env-dump reads but not indirect reads (e.g. `jq $ENV`), and independently flags any tool with `allow_chain_exec: true`, since credential env vars leak to every command in a shell operator chain. Maps to goclaw#1227 and goclaw#1033. |
+| **TA08** | A provider config is a violation unless it declares a recognized strong-encryption algorithm (currently only `aes-256-gcm`) for stored OAuth/credential tokens. Maps to goclaw#65. |
+| **TA16** | Flags a provider (e.g. litellm, bifrost) connection URL targeting a private/loopback/reserved address, using the same `net.cidr_contains`-based logic TA02 applies to MCP tools, unless the deployment declares both `validates_private` and `pins_resolved_ip` (or the host is explicitly allowlisted). Maps to goclaw#1430. |
+
+### Execution and approval hardening
+
+| Rule | What it catches |
+|---|---|
+| **TA05** | An "allow-always" exec approval keyed on basename alone, not a full path, is a violation, since it can be reused against a different executable sharing that basename. Maps to goclaw#1216. |
+| **TA07** | Flags root-by-default execution, full host-environment passthrough, tmpfs mounts missing `noexec`/`nosuid`/`nodev`, or any dangerous Linux capability added (`SETUID`, `SETGID`, `CHOWN`, `SYS_ADMIN`, `DAC_OVERRIDE`, `NET_ADMIN`, `SYS_PTRACE`). Maps to goclaw#1014, #1015, #524. |
+| **TA09** | A deployment must explicitly declare `sandbox.on_unavailable: fail_closed`; an undeclared value is treated as a violation, not a silent pass. Maps to goclaw#246. |
+
+### Identity, audit, and recovery
+
+| Rule | What it catches |
+|---|---|
+| **TA06** | A cron binding whose config doesn't declare `captures_creator_identity` is a violation; without it, a group-context job fires under a `system` identity instead of the real human creator. Maps to goclaw#1129. |
+| **TA12** | Deployment-level check: a violation if `owner_ids` is empty or no recovery/reset command is declared, risking permanent operator lockout. Maps to goclaw#954. |
+| **TA13** | Deployment-level check: a violation if `bridge_hmac_enabled` or `bridge_context_headers_signed` is not declared true; a missing declaration defaults to unsigned and fails, never silently passes. Maps to goclaw#91. |
+| **TA10** | Best-effort, static-config proxy: flags an agent whose entry doesn't explicitly declare `has_workspace_restriction_override` or `has_sandbox_config_override`. Maps to goclaw#145. |
+
+Other verified capabilities:
+
+- **SARIF 2.1.0 output** (`--format sarif`), schema-valid, with real byte/line locations and messages, ready for `github/codeql-action/upload-sarif` and GitHub code scanning.
+- **Plain JSON output** (`--format json`), a schema-light alternative to SARIF for a script or agent that just wants raw `rule_id`/`status`/`file`/`line` results without SARIF's tool/run/rule/taxonomy object model. Unlike SARIF (which only reports FAIL as a "result"), the JSON mode includes every PASS too, plus a `summary.fail`/`summary.pass` count. **Merged to `main`, not yet in a tagged release.** See the note under [CLI Reference](#cli-reference).
+- **Provisional HIPAA citations** on every finding (`--control hipaa`), mapped per rule, marked provisional (see [FAQ](#faq)).
+- **Zero-setup demo mode** (`--demo`) that scans a bundled synthetic deployment, no target config required.
+- **GitHub Action** (`action/action.yml`) that installs a pinned version via `go install` and uploads the SARIF report automatically.
+- **MCP server mode** (`tenantguard mcp`) that exposes the same scan engine as a tool an AI agent can call directly over stdio, instead of only through a human typing `tenantguard scan`. **Merged to `main`, not yet in a tagged release.** See [MCP server (agent-native usage)](#mcp-server-agent-native-usage) below for what's needed to run it today.
+
 ## CLI Reference
 
 TenantGuard has two subcommands: `scan` (the audit itself) and `mcp` (runs the same scan engine as an MCP server over stdio, see [MCP server (agent-native usage)](#mcp-server-agent-native-usage)). There is no top-level `--help` or `--version` flag; running `tenantguard` with no arguments, `tenantguard --help`, or any first argument other than `scan` or `mcp` prints the usage lines below to stderr and exits `2`.
 
-> **Release status:** `--format json` and the `mcp` subcommand shown below are implemented on `main` but are **not yet in the latest published version** (see the npm badge above for the current version) — confirmed by running the live `npm install -g tenantguard-cli` binary just now: `--format json` is silently ignored (falls back to terminal output) and `mcp` isn't recognized as a subcommand. `go install .../cmd/tenantguard@v0.1.1` resolves to an older, separately tagged binary (no matching GitHub release has been cut yet) with the same limitation. To use `--format json` or `tenantguard mcp` right now, build from source instead: `go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@main`. Both will ship once a matching tagged release is cut; this note will be removed then.
+> [!WARNING]
+> **Release status:** `--format json` and the `mcp` subcommand shown below are implemented on `main` but are **not yet in the latest published version** (see the npm badge above for the current version), confirmed by running the live `npm install -g tenantguard-cli` binary just now: `--format json` is silently ignored (falls back to terminal output) and `mcp` isn't recognized as a subcommand. `go install .../cmd/tenantguard@v0.1.1` resolves to an older, separately tagged binary (no matching GitHub release has been cut yet) with the same limitation. To use `--format json` or `tenantguard mcp` right now, build from source instead: `go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@main`. Both will ship once a matching tagged release is cut; this note will be removed then.
 
 ```
 usage: tenantguard scan [--target DIR | --demo] [--format terminal|sarif|json] [--control hipaa]
@@ -228,6 +227,7 @@ Exit codes (defined in `cmd/tenantguard/main.go`):
 
 ## MCP server (agent-native usage)
 
+> [!WARNING]
 > **Not yet in a published or tagged release.** Everything in this section describes `main` branch behavior. Run `go install github.com/RudrenduPaul/TenantGuard/cmd/tenantguard@main` to get the `mcp` subcommand today; the currently published npm/pip packages and the `v0.1.1` `go install` binary in [Install](#install) do not have it yet and will print a usage error if you try.
 
 Everything above assumes a human typing `tenantguard scan` at a terminal. TenantGuard also runs as an MCP server, so an AI agent (a coding assistant, an ops agent, anything that speaks the Model Context Protocol) can call the scan engine directly as a tool call, instead of shelling out to the CLI and parsing text.
@@ -308,7 +308,7 @@ Yes: `tenantguard scan --target <path-to-deployment-config-dir>`. `--demo` exist
 Yes. `--format sarif --sarif-out <file>` produces a schema-valid SARIF 2.1.0 document with real result locations and messages. The bundled GitHub Action (`action/action.yml`) runs a scan and uploads the SARIF report via `github/codeql-action/upload-sarif` in one step.
 
 **Why does TenantGuard have both `--format sarif` and `--format json`? Isn't SARIF already structured output?**
-Yes, SARIF is a real, standard, machine-parseable format, and it is the right choice for CI/code-scanning integration. `--format json` exists for a different consumer: a script or agent that wants to parse `rule_id`/`status`/`file`/`line` directly, without walking SARIF's tool/run/rule/taxonomy object model first. It also reports every PASS alongside every FAIL, which SARIF deliberately does not (SARIF results represent problems found, not a full checklist), so a caller can answer "what did you check" and not just "what did you flag" from one document. Note: `--format json` is on `main`, not yet in the version the npm/pip packages install today — see the note under [CLI Reference](#cli-reference).
+Yes, SARIF is a real, standard, machine-parseable format, and it is the right choice for CI/code-scanning integration. `--format json` exists for a different consumer: a script or agent that wants to parse `rule_id`/`status`/`file`/`line` directly, without walking SARIF's tool/run/rule/taxonomy object model first. It also reports every PASS alongside every FAIL, which SARIF deliberately does not (SARIF results represent problems found, not a full checklist), so a caller can answer "what did you check" and not just "what did you flag" from one document. Note: `--format json` is on `main`, not yet in the version the npm/pip packages install today, see the note under [CLI Reference](#cli-reference).
 
 **What do the CLI exit codes mean?**
 `0` is a clean scan with no findings, `1` means the scan ran successfully and found violations, and `2` is a scan or usage error (including running `tenantguard` with no subcommand, or any subcommand other than `scan` or `mcp`).
