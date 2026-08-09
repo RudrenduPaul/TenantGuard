@@ -189,6 +189,8 @@ Or emit plain JSON, for a script or agent that would rather parse a flat finding
 tenantguard scan --target ./deployment --format json
 ```
 
+![TenantGuard scan --format json output showing the flat findings array for a script or agent to parse](docs/demo-3-json-output.gif)
+
 ## CLI Reference
 
 TenantGuard has two subcommands: `scan` (the audit itself) and `mcp` (runs the same scan engine as an MCP server over stdio, see [MCP server (agent-native usage)](#mcp-server-agent-native-usage)). There is no top-level `--help` or `--version` flag; running `tenantguard` with no arguments, `tenantguard --help`, or any first argument other than `scan` or `mcp` prints the usage lines below to stderr and exits `2`.
