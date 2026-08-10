@@ -20,6 +20,10 @@
     "agentic-ai"
   ],
   "license": "Apache-2.0",
+  "author": "Rudrendu Paul",
+  "contributors": [
+    "Sourav Nandy"
+  ],
   "homepage": "https://github.com/RudrenduPaul/TenantGuard",
   "bugs": {
     "url": "https://github.com/RudrenduPaul/TenantGuard/issues"
