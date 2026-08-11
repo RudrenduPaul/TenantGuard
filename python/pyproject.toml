@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tenantguard-cli"
-version = "0.1.4"
+version = "0.1.5"
 description = "PyPI wrapper for TenantGuard, a tenant-isolation security-audit CLI for self-hosted multi-tenant AI-agent platforms. Downloads and runs the official prebuilt Go binary from GitHub Releases, Sigstore-verified on first run."
 readme = "README.md"
 requires-python = ">=3.9"

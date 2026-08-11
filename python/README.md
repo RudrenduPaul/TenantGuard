@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.RudrenduPaul/tenantguard -->
+
 # tenantguard-cli (PyPI)
 
 **Find the tenant-isolation gap in your self-hosted, multi-tenant AI-agent platform before an auditor, or an attacker, does.**

@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.RudrenduPaul/tenantguard -->
+
 # TenantGuard
 
 [![CI](https://github.com/RudrenduPaul/TenantGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/RudrenduPaul/TenantGuard/actions/workflows/ci.yml)
