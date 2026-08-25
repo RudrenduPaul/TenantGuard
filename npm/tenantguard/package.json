@@ -42,11 +42,11 @@
   "os": ["darwin", "linux", "win32"],
   "cpu": ["x64", "arm64"],
   "optionalDependencies": {
-    "tenantguard-darwin-x64": "0.1.1",
-    "tenantguard-darwin-arm64": "0.1.1",
-    "tenantguard-linux-x64": "0.1.1",
-    "tenantguard-linux-arm64": "0.1.1",
-    "tenantguard-win32-x64": "0.1.1",
-    "tenantguard-win32-arm64": "0.1.1"
+    "tenantguard-darwin-x64": "0.1.2",
+    "tenantguard-darwin-arm64": "0.1.2",
+    "tenantguard-linux-x64": "0.1.2",
+    "tenantguard-linux-arm64": "0.1.2",
+    "tenantguard-win32-x64": "0.1.2",
+    "tenantguard-win32-arm64": "0.1.2"
   }
 }
