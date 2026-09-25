@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-24
+
+### Changed
+- Go dependencies upgraded, shipped in the prebuilt binary: `open-policy-agent/opa`
+  to 1.21.0 and `modelcontextprotocol/go-sdk` to 1.8.0.
+- Go toolchain raised to 1.26.6, which includes the Go standard library
+  security fixes.
+- npm publishing moves to npm Trusted Publishing (OIDC, no long-lived token)
+  via `.github/workflows/publish-npm.yml`, triggered by a published GitHub
+  release. The `tenantguard-cli` package and the six `tenantguard-<os>-<arch>`
+  platform packages now share one version (0.2.0), and each platform package
+  fetches its binary from the matching `v0.2.0` release.
+- PyPI wrapper: development dependency version caps updated (no change to the
+  installed package's runtime behavior).
+
 ### Added
 - `tenantguard scan --format json`: a plain, schema-light structured output
   mode alongside `--format sarif`, for agents/scripts that want raw

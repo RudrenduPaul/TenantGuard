@@ -1,0 +1,124 @@
+name: Publish npm
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    # Only Go release tags (vX.Y.Z) publish npm packages. Releases tagged for
+    # the PyPI wrapper (python-v*) are ignored here.
+    if: startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Use npm 11.5.1 or newer (required for Trusted Publishing)
+        run: npm install -g npm@latest
+
+      - name: Check release tag matches every npm package version
+        run: |
+          for pkg in \
+            npm/tenantguard \
+            npm/platforms/tenantguard-darwin-arm64 \
+            npm/platforms/tenantguard-darwin-x64 \
+            npm/platforms/tenantguard-linux-arm64 \
+            npm/platforms/tenantguard-linux-x64 \
+            npm/platforms/tenantguard-win32-arm64 \
+            npm/platforms/tenantguard-win32-x64; do
+            version=$(node -p "require('./$pkg/package.json').version")
+            if [ "v$version" != "$RELEASE_TAG" ]; then
+              echo "release tag $RELEASE_TAG does not match $pkg version $version"
+              exit 1
+            fi
+          done
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: "1.26"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./...
+
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
+
+      - name: Wait for the release workflow to attach signed binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          required="checksums.txt checksums.txt.sig checksums.txt.pem tenantguard_darwin_amd64.tar.gz tenantguard_darwin_arm64.tar.gz tenantguard_linux_amd64.tar.gz tenantguard_linux_arm64.tar.gz tenantguard_windows_amd64.zip tenantguard_windows_arm64.zip"
+          for attempt in $(seq 1 60); do
+            names=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+            missing=""
+            for asset in $required; do
+              echo "$names" | grep -qxF "$asset" || missing="$missing $asset"
+            done
+            if [ -z "$missing" ]; then
+              echo "all release assets are present"
+              exit 0
+            fi
+            echo "attempt $attempt: waiting for:$missing"
+            sleep 30
+          done
+          echo "release assets did not appear within 30 minutes"
+          exit 1
+
+      # Platform packages first: the main package depends on them. Each one's
+      # prepack script downloads its binary from the release named by
+      # TENANTGUARD_RELEASE_TAG and verifies the cosign signature and checksum.
+      - name: Publish tenantguard-darwin-arm64
+        working-directory: npm/platforms/tenantguard-darwin-arm64
+        env:
+          TENANTGUARD_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: npm publish --access public
+
+      - name: Publish tenantguard-darwin-x64
+        working-directory: npm/platforms/tenantguard-darwin-x64
+        env:
+          TENANTGUARD_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: npm publish --access public
+
+      - name: Publish tenantguard-linux-arm64
+        working-directory: npm/platforms/tenantguard-linux-arm64
+        env:
+          TENANTGUARD_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: npm publish --access public
+
+      - name: Publish tenantguard-linux-x64
+        working-directory: npm/platforms/tenantguard-linux-x64
+        env:
+          TENANTGUARD_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: npm publish --access public
+
+      - name: Publish tenantguard-win32-arm64
+        working-directory: npm/platforms/tenantguard-win32-arm64
+        env:
+          TENANTGUARD_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: npm publish --access public
+
+      - name: Publish tenantguard-win32-x64
+        working-directory: npm/platforms/tenantguard-win32-x64
+        env:
+          TENANTGUARD_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: npm publish --access public
+
+      - name: Publish tenantguard-cli
+        working-directory: npm/tenantguard
+        run: npm publish --access public

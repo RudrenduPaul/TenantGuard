@@ -3,7 +3,8 @@
 
 /*
  * Fetches and verifies the tenantguard binary for one platform/arch from the
- * pinned v0.1.1 GitHub release, then extracts it into the calling package's
+ * GitHub release for this version (default v0.2.0, override with the
+ * TENANTGUARD_RELEASE_TAG env var), then extracts it into the calling package's
  * bin/ directory.
  *
  * Runs ONLY as a "prepack" lifecycle script -- i.e. only on the machine that
@@ -48,7 +49,12 @@ const path = require("path");
 const zlib = require("zlib");
 const { spawnSync } = require("child_process");
 
-const RELEASE_TAG = "v0.1.1";
+const DEFAULT_RELEASE_TAG = "v0.2.0";
+const RELEASE_TAG = process.env.TENANTGUARD_RELEASE_TAG || DEFAULT_RELEASE_TAG;
+if (!/^v\d+\.\d+\.\d+$/.test(RELEASE_TAG)) {
+  console.error(`fetch-binary: invalid release tag "${RELEASE_TAG}" (expected vX.Y.Z)`);
+  process.exit(1);
+}
 const REPO = "RudrenduPaul/TenantGuard";
 const RELEASE_BASE = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}`;
 const MAX_REDIRECTS = 5;

@@ -1,6 +1,6 @@
 {
   "name": "tenantguard-win32-arm64",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Prebuilt tenantguard binary for win32/arm64 (Windows on ARM). Installed automatically as an optional dependency of the tenantguard npm package; not meant to be installed directly.",
   "os": [
     "win32"
@@ -12,7 +12,8 @@
   "homepage": "https://github.com/RudrenduPaul/TenantGuard",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RudrenduPaul/TenantGuard.git"
+    "url": "git+https://github.com/RudrenduPaul/TenantGuard.git",
+    "directory": "npm/platforms/tenantguard-win32-arm64"
   },
   "scripts": {
     "prepack": "node ../../scripts/fetch-binary.js windows arm64 zip tenantguard.exe"
