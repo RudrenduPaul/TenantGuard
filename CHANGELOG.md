@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [PyPI 0.1.6] - 2026-09-25
+
+- The Python wrapper (`tenantguard-cli` on PyPI) now downloads the v0.2.0 binary.
+
 ## [0.2.0] - 2026-09-24
 
 ### Changed
